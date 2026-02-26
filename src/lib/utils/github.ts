@@ -81,20 +81,26 @@ export async function pushFileToRepo(
 export async function waitForRepo(
   owner: string,
   repo: string,
-  maxWaitMs = 30000
+  maxWaitMs = 90000
 ): Promise<void> {
   const octokit = getOctokit();
   const start = Date.now();
+  let attempt = 0;
 
   while (Date.now() - start < maxWaitMs) {
+    attempt++;
     try {
       const { data } = await octokit.rest.repos.get({ owner, repo });
       // Template repos start empty — wait until they have content
-      if (data.size > 0) return;
+      if (data.size > 0) {
+        console.log(`[github] Repo ${owner}/${repo} ready after ${attempt} attempts (${((Date.now() - start) / 1000).toFixed(1)}s)`);
+        return;
+      }
     } catch {
       // Repo not ready yet
     }
-    await new Promise((r) => setTimeout(r, 2000));
+    // Poll every 3s, backing off slightly after initial burst
+    await new Promise((r) => setTimeout(r, attempt < 5 ? 2000 : 3000));
   }
 
   throw new Error(`Repo ${owner}/${repo} not ready after ${maxWaitMs / 1000}s`);
