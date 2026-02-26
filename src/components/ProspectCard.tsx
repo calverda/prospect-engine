@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Prospect } from "@/lib/db/schema";
 import { PipelineStatus } from "./PipelineStatus";
-import { formatCurrency, formatDate } from "@/lib/utils/format";
+import { formatDate } from "@/lib/utils/format";
 
 interface ProspectCardProps {
   prospect: Prospect;
@@ -61,13 +61,26 @@ export function ProspectCard({ prospect }: ProspectCardProps) {
         </div>
       </div>
 
-      {isComplete && prospect.revenueGapMonthly && (
-        <p className="mt-2 text-sm">
-          Revenue gap:{" "}
-          <span className="font-semibold text-red-600">
-            {formatCurrency(prospect.revenueGapMonthly)}/mo
+      {prospect.leadScore && (
+        <div className="mt-2 flex gap-2">
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+            prospect.leadScore === "Hot Lead" ? "bg-red-100 text-red-700" :
+            prospect.leadScore === "Warm Lead" ? "bg-orange-100 text-orange-700" :
+            prospect.leadScore === "Cool Lead" ? "bg-blue-100 text-blue-700" :
+            "bg-zinc-100 text-zinc-600"
+          }`}>
+            {prospect.leadScore}
           </span>
-        </p>
+          {prospect.salesPriority && (
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+              prospect.salesPriority === "High" ? "bg-green-100 text-green-700" :
+              prospect.salesPriority === "Medium" ? "bg-yellow-100 text-yellow-700" :
+              "bg-zinc-100 text-zinc-600"
+            }`}>
+              {prospect.salesPriority} Priority
+            </span>
+          )}
+        </div>
       )}
 
       <div className="mt-3 flex gap-3 text-sm">

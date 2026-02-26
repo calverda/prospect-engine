@@ -7,7 +7,7 @@ export function ImportLeads() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
+  const [result, setResult] = useState<{ imported: number; updated: number; skipped: number } | null>(null);
 
   async function handleImport() {
     const file = fileRef.current?.files?.[0];
@@ -55,7 +55,9 @@ export function ImportLeads() {
       </div>
       {result && (
         <p className="mt-2 text-xs text-zinc-500">
-          Imported {result.imported} leads{result.skipped > 0 && `, skipped ${result.skipped} duplicates`}.
+          Imported {result.imported} new leads
+          {result.updated > 0 && `, updated ${result.updated} existing`}
+          {result.skipped > 0 && `, skipped ${result.skipped}`}.
         </p>
       )}
     </div>

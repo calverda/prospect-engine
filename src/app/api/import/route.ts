@@ -32,6 +32,19 @@ interface ExcelRow {
   State?: string;
   Zip_Code?: string | number;
   Website?: string;
+  Google_SEO_Rank?: string;
+  Has_Website?: string;
+  Sales_Priority?: string;
+  Opportunity_Notes?: string;
+  Site_Quality?: string;
+  Quality_Issues?: string;
+  Lead_Score?: string;
+  Contact_Email?: string;
+  NY_SOS_Status?: string;
+  BBB_Rating?: string;
+  BBB_Accredited?: string;
+  Red_Flags?: string;
+  // Legacy column name
   SEO?: string;
 }
 
@@ -48,21 +61,21 @@ export async function POST(request: NextRequest) {
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json<ExcelRow>(sheet);
 
-  // Get existing business names to skip duplicates
-  const existing = await db.select({ name: prospects.businessName }).from(prospects);
-  const existingNames = new Set(existing.map((e) => e.name.toLowerCase()));
+  // Get existing prospects to handle duplicates and updates
+  const existing = await db
+    .select({ id: prospects.id, name: prospects.businessName })
+    .from(prospects);
+  const existingMap = new Map(
+    existing.map((e) => [e.name.toLowerCase(), e.id])
+  );
 
   let imported = 0;
+  let updated = 0;
   let skipped = 0;
 
   for (const row of rows) {
     const companyName = row.Company_Name?.trim();
     if (!companyName) {
-      skipped++;
-      continue;
-    }
-
-    if (existingNames.has(companyName.toLowerCase())) {
       skipped++;
       continue;
     }
@@ -77,6 +90,34 @@ export async function POST(request: NextRequest) {
 
     let website = row.Website?.trim() ?? null;
     if (website === "") website = null;
+
+    // Enrichment fields
+    const enrichment = {
+      phone: row.Phone?.trim() || null,
+      contactEmail: row.Contact_Email?.trim() || null,
+      streetAddress: row.Street_Address?.trim() || null,
+      salesPriority: row.Sales_Priority?.trim() || null,
+      leadScore: row.Lead_Score?.trim() || null,
+      siteQuality: row.Site_Quality?.trim() || null,
+      opportunityNotes: row.Opportunity_Notes?.trim() || null,
+      qualityIssues: row.Quality_Issues?.trim() || null,
+      redFlags: row.Red_Flags?.trim() || null,
+      bbbRating: row.BBB_Rating?.trim() || null,
+      bbbAccredited: row.BBB_Accredited?.trim() || null,
+      nySosStatus: row.NY_SOS_Status?.trim() || null,
+      googleSeoRank: (row.Google_SEO_Rank ?? row.SEO)?.trim() || null,
+    };
+
+    // If prospect already exists, update enrichment data
+    const existingId = existingMap.get(companyName.toLowerCase());
+    if (existingId) {
+      await db
+        .update(prospects)
+        .set(enrichment)
+        .where(eq(prospects.id, existingId));
+      updated++;
+      continue;
+    }
 
     const id = uuid();
     const baseSlug = slugify(companyName);
@@ -97,11 +138,12 @@ export async function POST(request: NextRequest) {
       industry,
       status: "saved",
       createdAt: new Date().toISOString(),
+      ...enrichment,
     });
 
-    existingNames.add(companyName.toLowerCase());
+    existingMap.set(companyName.toLowerCase(), id);
     imported++;
   }
 
-  return NextResponse.json({ imported, skipped });
+  return NextResponse.json({ imported, updated, skipped });
 }

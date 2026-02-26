@@ -4,8 +4,8 @@ import { desc } from "drizzle-orm";
 import Link from "next/link";
 import { ProspectForm } from "@/components/ProspectForm";
 import { ProspectCard } from "@/components/ProspectCard";
-import { LeadCard } from "@/components/LeadCard";
 import { ImportLeads } from "@/components/ImportLeads";
+import { LeadFilters } from "@/components/LeadFilters";
 import { LogoutButton } from "@/components/LogoutButton";
 
 export const dynamic = "force-dynamic";
@@ -57,10 +57,8 @@ export default async function Dashboard() {
           </div>
           <ImportLeads />
           {savedLeads.length > 0 && (
-            <div className="mt-4 grid gap-3">
-              {savedLeads.map((lead) => (
-                <LeadCard key={lead.id} prospect={lead} />
-              ))}
+            <div className="mt-4">
+              <LeadFilters leads={savedLeads} />
             </div>
           )}
         </section>

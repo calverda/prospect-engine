@@ -28,6 +28,21 @@ export const prospects = pgTable("prospects", {
   // Site plan (JSON — generated content for website builder)
   sitePlan: text("site_plan"),
 
+  // Lead enrichment data (from Excel import)
+  phone: text("phone"),
+  contactEmail: text("contact_email"),
+  streetAddress: text("street_address"),
+  salesPriority: text("sales_priority"),       // High / Medium / Low
+  leadScore: text("lead_score"),               // Hot Lead / Warm Lead / Cool Lead / Skip
+  siteQuality: text("site_quality"),           // Well Maintained / Acceptable / Needs Update / Needs Overhaul / No Website
+  opportunityNotes: text("opportunity_notes"),
+  qualityIssues: text("quality_issues"),
+  redFlags: text("red_flags"),
+  bbbRating: text("bbb_rating"),
+  bbbAccredited: text("bbb_accredited"),       // Yes / No
+  nySosStatus: text("ny_sos_status"),          // Active / Not Found / Inactive
+  googleSeoRank: text("google_seo_rank"),
+
   // Phase 3 outputs
   previewUrl: text("preview_url"),
   repoUrl: text("repo_url"),

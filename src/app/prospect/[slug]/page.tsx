@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { PipelineStatus } from "@/components/PipelineStatus";
-import { formatCurrency, formatDate } from "@/lib/utils/format";
+import { formatDate } from "@/lib/utils/format";
 import type { Prospect } from "@/lib/db/schema";
 
 interface SitePlan {
@@ -185,29 +185,134 @@ export default function ProspectDetail() {
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-8 space-y-6">
+        {/* Lead Intelligence */}
+        {(prospect.leadScore || prospect.salesPriority || prospect.phone || prospect.contactEmail) && (
+          <div className="rounded-lg border bg-white p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-zinc-500">Lead Intelligence</h2>
+              <div className="flex gap-2">
+                {prospect.leadScore && (
+                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    prospect.leadScore === "Hot Lead" ? "bg-red-100 text-red-800" :
+                    prospect.leadScore === "Warm Lead" ? "bg-orange-100 text-orange-800" :
+                    prospect.leadScore === "Cool Lead" ? "bg-blue-100 text-blue-800" :
+                    "bg-zinc-100 text-zinc-600"
+                  }`}>
+                    {prospect.leadScore}
+                  </span>
+                )}
+                {prospect.salesPriority && (
+                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    prospect.salesPriority === "High" ? "bg-green-100 text-green-800" :
+                    prospect.salesPriority === "Medium" ? "bg-yellow-100 text-yellow-800" :
+                    "bg-zinc-100 text-zinc-600"
+                  }`}>
+                    {prospect.salesPriority} Priority
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {prospect.phone && (
+                <div>
+                  <p className="text-xs text-zinc-400">Phone</p>
+                  <a href={`tel:${prospect.phone}`} className="text-sm font-medium text-blue-600 hover:underline">{prospect.phone}</a>
+                </div>
+              )}
+              {prospect.contactEmail && (
+                <div>
+                  <p className="text-xs text-zinc-400">Email</p>
+                  <a href={`mailto:${prospect.contactEmail}`} className="text-sm font-medium text-blue-600 hover:underline">{prospect.contactEmail}</a>
+                </div>
+              )}
+              {prospect.streetAddress && (
+                <div>
+                  <p className="text-xs text-zinc-400">Address</p>
+                  <p className="text-sm">{prospect.streetAddress}</p>
+                </div>
+              )}
+              {prospect.siteQuality && (
+                <div>
+                  <p className="text-xs text-zinc-400">Site Quality</p>
+                  <p className={`text-sm font-medium ${
+                    prospect.siteQuality === "No Website" || prospect.siteQuality === "Needs Overhaul" ? "text-red-600" :
+                    prospect.siteQuality === "Needs Update" ? "text-orange-600" :
+                    prospect.siteQuality === "Acceptable" ? "text-yellow-600" :
+                    prospect.siteQuality === "Well Maintained" ? "text-green-600" :
+                    "text-zinc-600"
+                  }`}>{prospect.siteQuality}</p>
+                </div>
+              )}
+              {prospect.googleSeoRank && (
+                <div>
+                  <p className="text-xs text-zinc-400">Google SEO</p>
+                  <p className="text-sm">{prospect.googleSeoRank}</p>
+                </div>
+              )}
+              {prospect.bbbRating && prospect.bbbRating !== "Not Rated" && (
+                <div>
+                  <p className="text-xs text-zinc-400">BBB Rating</p>
+                  <p className="text-sm font-medium">
+                    {prospect.bbbRating}
+                    {prospect.bbbAccredited === "Yes" && (
+                      <span className="ml-1 text-xs text-green-600">Accredited</span>
+                    )}
+                  </p>
+                </div>
+              )}
+              {prospect.nySosStatus && prospect.nySosStatus !== "Not Found" && (
+                <div>
+                  <p className="text-xs text-zinc-400">NY SOS Status</p>
+                  <p className={`text-sm font-medium ${
+                    prospect.nySosStatus === "Active" ? "text-green-600" : "text-red-600"
+                  }`}>{prospect.nySosStatus}</p>
+                </div>
+              )}
+            </div>
+
+            {prospect.opportunityNotes && (
+              <div>
+                <p className="text-xs text-zinc-400 mb-1">Opportunity</p>
+                <p className="text-sm text-zinc-700">{prospect.opportunityNotes}</p>
+              </div>
+            )}
+
+            {prospect.qualityIssues && (
+              <div>
+                <p className="text-xs text-zinc-400 mb-1">Quality Notes</p>
+                <p className="text-sm text-zinc-600">{prospect.qualityIssues}</p>
+              </div>
+            )}
+
+            {prospect.redFlags && (
+              <div className="rounded border border-red-200 bg-red-50 px-3 py-2">
+                <p className="text-xs font-medium text-red-700 mb-1">Red Flags</p>
+                <p className="text-sm text-red-600">{prospect.redFlags}</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Quick Stats */}
         {prospect.status === "complete" && (
           <div className="grid grid-cols-3 gap-4">
             <div className="rounded-lg border bg-white p-4">
-              <p className="text-sm text-zinc-500">Monthly Revenue Gap</p>
-              <p className="text-2xl font-bold text-red-600">
-                {prospect.revenueGapMonthly
-                  ? formatCurrency(prospect.revenueGapMonthly)
-                  : "N/A"}
-              </p>
-            </div>
-            <div className="rounded-lg border bg-white p-4">
-              <p className="text-sm text-zinc-500">Annual Revenue Gap</p>
-              <p className="text-2xl font-bold text-red-600">
-                {prospect.revenueGapAnnual
-                  ? formatCurrency(prospect.revenueGapAnnual)
-                  : "N/A"}
-              </p>
-            </div>
-            <div className="rounded-lg border bg-white p-4">
               <p className="text-sm text-zinc-500">Report Views</p>
               <p className="text-2xl font-bold">
                 {prospect.reportViewCount ?? 0}
+              </p>
+            </div>
+            <div className="rounded-lg border bg-white p-4">
+              <p className="text-sm text-zinc-500">Preview Views</p>
+              <p className="text-2xl font-bold">
+                {prospect.previewViewCount ?? 0}
+              </p>
+            </div>
+            <div className="rounded-lg border bg-white p-4">
+              <p className="text-sm text-zinc-500">Status</p>
+              <p className="text-2xl font-bold capitalize">
+                {prospect.status}
               </p>
             </div>
           </div>
