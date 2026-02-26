@@ -67,6 +67,8 @@ export default function ProspectDetail() {
   const [planning, setPlanning] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [building, setBuilding] = useState(false);
   const [buildError, setBuildError] = useState<string | null>(null);
 
@@ -108,6 +110,36 @@ export default function ProspectDetail() {
     } catch {
       alert("Failed to generate");
       setGenerating(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!prospect) return;
+    setCancelling(true);
+    try {
+      const res = await fetch(`/api/prospects/${prospect.id}/cancel`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to cancel");
+      await fetchProspect();
+    } catch {
+      alert("Failed to cancel");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const handleRegenerate = async () => {
+    if (!prospect) return;
+    setRegenerating(true);
+    try {
+      const res = await fetch(`/api/prospects/${prospect.id}/regenerate`, { method: "POST" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to regenerate");
+      }
+      await fetchProspect();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to regenerate");
+      setRegenerating(false);
     }
   };
 
@@ -406,6 +438,28 @@ export default function ProspectDetail() {
                 : prospect.status === "deploying"
                   ? "Deploying..."
                   : "Build & Deploy"}
+            </button>
+          )}
+
+          {/* Cancel button — shown during active operations */}
+          {["pending", "scraping", "analyzing", "building", "deploying"].includes(prospect.status) && (
+            <button
+              onClick={handleCancel}
+              disabled={cancelling}
+              className="rounded-md border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              {cancelling ? "Cancelling..." : "Cancel"}
+            </button>
+          )}
+
+          {/* Regenerate Intel — shown on complete or error with scraped data */}
+          {["complete", "error"].includes(prospect.status) && prospect.crawledSiteData && (
+            <button
+              onClick={handleRegenerate}
+              disabled={regenerating}
+              className="rounded-md border border-orange-300 px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 disabled:opacity-50"
+            >
+              {regenerating ? "Regenerating..." : "Regenerate Intel"}
             </button>
           )}
         </div>

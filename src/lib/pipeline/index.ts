@@ -9,6 +9,18 @@ async function updateProspect(id: string, data: Record<string, unknown>) {
   await db.update(prospects).set(data).where(eq(prospects.id, id));
 }
 
+/** Check if the user cancelled while the pipeline was running */
+async function isCancelled(id: string): Promise<boolean> {
+  const [row] = await db
+    .select({ status: prospects.status })
+    .from(prospects)
+    .where(eq(prospects.id, id))
+    .limit(1);
+  // If status was reset to complete/error/saved by the cancel route,
+  // the pipeline should stop writing further updates
+  return !row || ["complete", "error", "saved"].includes(row.status);
+}
+
 export async function runPipeline(
   input: ProspectInput,
   prospectId: string
@@ -38,6 +50,12 @@ export async function runPipeline(
       auditData: scraped.audit ? JSON.stringify(scraped.audit) : null,
       trafficData: scraped.traffic ? JSON.stringify(scraped.traffic) : null,
     });
+
+    // Check if user cancelled during scraping
+    if (await isCancelled(prospectId)) {
+      console.log(`[pipeline] Cancelled after scraping for ${input.businessName}`);
+      return { slug: "", scraped, analysis: {} as never, intel: {} as never, build: { previewUrl: "", repoUrl: "", slug: "" } };
+    }
 
     // Phase 2: Analyze
     await updateProspect(prospectId, {
