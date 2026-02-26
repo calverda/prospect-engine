@@ -9,6 +9,7 @@ import { INDUSTRIES, type IndustryConfig } from "@/lib/config/industries";
 import { buildAnalysisPrompt } from "@/lib/prompts/analysis";
 import { buildIntelPrompt } from "@/lib/prompts/report";
 import { buildBriefPrompt } from "@/lib/prompts/build-brief";
+import { buildSitePlanPrompt } from "@/lib/prompts/site-plan";
 
 const MODEL = "claude-sonnet-4-20250514";
 
@@ -126,6 +127,28 @@ export async function generateBuildBrief(
 ): Promise<string> {
   const industry = INDUSTRIES[input.industry];
   return buildBriefPrompt(analysis, scraped, industry);
+}
+
+// ── Site Plan (for website builder) ──
+
+export async function generateSitePlan(
+  scraped: ScrapedData,
+  analysis: BusinessAnalysis
+): Promise<string> {
+  const prompt = buildSitePlanPrompt(scraped, analysis);
+  console.log(
+    `[analyzer] Generating site plan (${(prompt.length / 1000).toFixed(1)}k chars prompt)...`
+  );
+
+  const response = await callClaude(
+    "You are an expert web strategist and UX copywriter for local service businesses. You return only valid JSON.",
+    prompt,
+    8000
+  );
+
+  // Validate it's valid JSON before returning
+  const parsed = parseJsonResponse<Record<string, unknown>>(response);
+  return JSON.stringify(parsed);
 }
 
 // ── Master orchestrator ──

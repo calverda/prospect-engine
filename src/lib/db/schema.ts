@@ -25,6 +25,9 @@ export const prospects = pgTable("prospects", {
   competitiveIntel: text("competitive_intel"),
   buildBrief: text("build_brief"),
 
+  // Site plan (JSON — generated content for website builder)
+  sitePlan: text("site_plan"),
+
   // Phase 3 outputs
   previewUrl: text("preview_url"),
   repoUrl: text("repo_url"),
