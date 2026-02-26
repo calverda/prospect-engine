@@ -1,26 +1,62 @@
-import { db } from "@/lib/db";
-import { prospects } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { notFound } from "next/navigation";
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { PipelineStatus } from "@/components/PipelineStatus";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
+import type { Prospect } from "@/lib/db/schema";
 
-export default async function ProspectDetail({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
-  const result = await db
-    .select()
-    .from(prospects)
-    .where(eq(prospects.slug, slug))
-    .limit(1);
+export default function ProspectDetail() {
+  const params = useParams<{ slug: string }>();
+  const slug = params.slug;
 
-  if (result.length === 0) notFound();
+  const [prospect, setProspect] = useState<Prospect | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const prospect = result[0];
+  const fetchProspect = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/prospects?slug=${slug}`);
+      if (!res.ok) {
+        setError("Prospect not found");
+        return;
+      }
+      const data = await res.json();
+      setProspect(data);
+    } catch {
+      setError("Failed to load prospect");
+    }
+  }, [slug]);
+
+  useEffect(() => {
+    fetchProspect();
+  }, [fetchProspect]);
+
+  // Poll while pipeline is active
+  useEffect(() => {
+    if (!prospect) return;
+    const isActive = !["complete", "error"].includes(prospect.status);
+    if (!isActive) return;
+
+    const interval = setInterval(fetchProspect, 3000);
+    return () => clearInterval(interval);
+  }, [prospect, fetchProspect]);
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
+
+  if (!prospect) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-zinc-500">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -36,6 +72,9 @@ export default async function ProspectDetail({
           {prospect.industry} &middot; {prospect.location} &middot;{" "}
           {formatDate(prospect.createdAt)}
         </p>
+        {prospect.statusMessage && (
+          <p className="mt-1 text-sm text-zinc-400">{prospect.statusMessage}</p>
+        )}
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-8 space-y-6">
@@ -89,12 +128,14 @@ export default async function ProspectDetail({
               GitHub Repo
             </a>
           )}
-          <Link
-            href={`/report/${prospect.slug}`}
-            className="rounded-md border px-4 py-2 text-sm hover:bg-zinc-50"
-          >
-            Intel Report
-          </Link>
+          {prospect.status === "complete" && (
+            <Link
+              href={`/report/${prospect.slug}`}
+              className="rounded-md border px-4 py-2 text-sm hover:bg-zinc-50"
+            >
+              Intel Report
+            </Link>
+          )}
         </div>
 
         {/* Error Message */}

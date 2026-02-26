@@ -33,10 +33,10 @@ export function ProspectForm() {
       if (!res.ok) throw new Error("Generation failed");
 
       const data = await res.json();
-      // TODO: Navigate to prospect detail or update list
-      console.log("Generated:", data);
+      window.location.href = `/prospect/${data.slug}`;
     } catch (err) {
       console.error(err);
+      alert("Failed to start generation. Check console for details.");
     } finally {
       setLoading(false);
     }

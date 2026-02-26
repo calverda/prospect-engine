@@ -1,9 +1,18 @@
 import { collectAllData } from "./scraper";
 import { analyzeAll } from "./analyzer";
-import { buildSite } from "./builder";
 import type { ProspectInput, PipelineResult } from "./types";
+import { db } from "@/lib/db";
+import { prospects } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
-export async function runPipeline(input: ProspectInput): Promise<PipelineResult> {
+async function updateProspect(id: string, data: Record<string, unknown>) {
+  await db.update(prospects).set(data).where(eq(prospects.id, id));
+}
+
+export async function runPipeline(
+  input: ProspectInput,
+  prospectId: string
+): Promise<PipelineResult> {
   console.log("\n" + "=".repeat(60));
   console.log("  CALVERDA PROSPECT ENGINE");
   console.log(`  Target: ${input.businessName}`);
@@ -13,25 +22,77 @@ export async function runPipeline(input: ProspectInput): Promise<PipelineResult>
 
   const startTime = Date.now();
 
-  // Phase 1: Scrape — website crawl, GBP, competitors, audit, traffic in parallel
-  const scraped = await collectAllData(input);
+  try {
+    // Phase 1: Scrape
+    await updateProspect(prospectId, {
+      status: "scraping",
+      statusMessage: "Crawling website, scraping GBP, scanning competitors...",
+    });
 
-  // Phase 2: Analyze — business analysis, competitive intel, build brief via Claude
-  const { analysis, intel, buildBrief } = await analyzeAll(scraped, input);
+    const scraped = await collectAllData(input);
 
-  // Phase 3: Build — create repo, build site via Claude Code, deploy to Vercel
-  const slug = input.businessName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-  const build = await buildSite(analysis, scraped, input, slug);
+    await updateProspect(prospectId, {
+      crawledSiteData: scraped.crawledSite ? JSON.stringify(scraped.crawledSite) : null,
+      gbpData: scraped.gbp ? JSON.stringify(scraped.gbp) : null,
+      competitorData: scraped.competitors.length > 0 ? JSON.stringify(scraped.competitors) : null,
+      auditData: scraped.audit ? JSON.stringify(scraped.audit) : null,
+      trafficData: scraped.traffic ? JSON.stringify(scraped.traffic) : null,
+    });
 
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  console.log("\n" + "=".repeat(60));
-  console.log(`  COMPLETE in ${elapsed}s`);
-  console.log(`  Preview: ${build.previewUrl}`);
-  console.log(`  Repo: ${build.repoUrl}`);
-  console.log("=".repeat(60) + "\n");
+    // Phase 2: Analyze
+    await updateProspect(prospectId, {
+      status: "analyzing",
+      statusMessage: "Running business analysis and competitive intel via Claude...",
+    });
 
-  return { slug, scraped, analysis, intel, build };
+    const { analysis, intel, buildBrief } = await analyzeAll(scraped, input);
+
+    const revenueGapMonthly = intel.revenueOpportunity?.monthlyHigh ?? null;
+    const revenueGapAnnual = intel.revenueOpportunity?.annualHigh ?? null;
+
+    await updateProspect(prospectId, {
+      businessAnalysis: JSON.stringify(analysis),
+      competitiveIntel: JSON.stringify(intel),
+      buildBrief,
+      revenueGapMonthly,
+      revenueGapAnnual,
+    });
+
+    // Phase 3: Build — skipped for POC
+    const slug = input.businessName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    await updateProspect(prospectId, {
+      status: "complete",
+      statusMessage: `Completed in ${elapsed}s (build phase skipped)`,
+      completedAt: new Date().toISOString(),
+    });
+
+    console.log("\n" + "=".repeat(60));
+    console.log(`  COMPLETE in ${elapsed}s`);
+    console.log("=".repeat(60) + "\n");
+
+    return {
+      slug,
+      scraped,
+      analysis,
+      intel,
+      build: { previewUrl: "", repoUrl: "", slug },
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[pipeline] Fatal error: ${message}`);
+
+    await updateProspect(prospectId, {
+      status: "error",
+      statusMessage: "Pipeline failed",
+      errorMessage: message,
+    });
+
+    throw err;
+  }
 }
