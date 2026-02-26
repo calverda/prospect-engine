@@ -16,6 +16,12 @@ export type IndustryKey =
   | "behavioral_health"
   | "pest_control"
   | "general_contractor"
+  | "masonry"
+  | "fence"
+  | "solar"
+  | "pool"
+  | "paving"
+  | "windows_doors"
   | "church"
   | "school"
   | "local_government";
