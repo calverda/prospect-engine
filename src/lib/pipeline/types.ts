@@ -217,15 +217,28 @@ export interface CompetitiveIntel {
   mapPackAnalysis: string;
   prospectPosition: string;
   keyFindings: string[];
-  revenueOpportunity: {
+  competitiveGaps: {
+    category: string;
+    yours: string;
+    topCompetitor: string;
+    impact: string;
+    fix: string;
+  }[];
+  topRecommendations: {
+    action: string;
+    why: string;
+    howCalverdaHelps: string;
+  }[];
+  urgencyNote: string;
+
+  // Legacy field — old reports may still have this
+  revenueOpportunity?: {
     monthlyLow: number;
     monthlyHigh: number;
     annualLow: number;
     annualHigh: number;
     methodology: string;
   };
-  topRecommendations: string[];
-  urgencyNote: string;
 }
 
 // ── PHASE 3: BUILD ──

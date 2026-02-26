@@ -11,7 +11,7 @@ export function buildIntelPrompt(
   const traffic = scraped.traffic;
   const competitors = scraped.competitors;
 
-  let prompt = `Generate a competitive intelligence briefing for a ${industry.name} business in ${location}.\n\n`;
+  let prompt = `Generate a competitive intelligence report for a ${industry.name} business in ${location}.\n\n`;
 
   // ── Prospect data ──
   prompt += `## THE PROSPECT\n`;
@@ -46,8 +46,12 @@ export function buildIntelPrompt(
         if (c.website) line += ` — ${c.website}`;
         if (c.homepageWordCount)
           line += ` — ${c.homepageWordCount} words on homepage`;
+        if (c.serviceCount !== null)
+          line += ` — ${c.serviceCount} service pages`;
         if (c.hasSchema !== null)
           line += ` — Schema: ${c.hasSchema ? "Yes" : "No"}`;
+        if (c.hasBlog !== null)
+          line += ` — Blog: ${c.hasBlog ? "Yes" : "No"}`;
         return line;
       })
       .join("\n");
@@ -56,50 +60,54 @@ export function buildIntelPrompt(
     prompt += `## COMPETITORS\nNo competitor data available.\n\n`;
   }
 
-  // ── Industry benchmarks ──
-  prompt += `## INDUSTRY BENCHMARKS (${industry.name})\n`;
-  prompt += `Avg conversion rate (visitor → call): ${(industry.conversionRate * 100).toFixed(0)}%\n`;
-  prompt += `Avg close rate (call → job): ${(industry.closeRate * 100).toFixed(0)}%\n`;
-  prompt += `Avg service ticket: $${industry.avgTicket.service}\n`;
-  prompt += `Avg install ticket: $${industry.avgTicket.install}\n\n`;
-
-  // ── Revenue gap context ──
-  prompt += `## REVENUE GAP CALCULATION CONTEXT\n`;
-  prompt += `Use the review count differential as the primary signal:\n`;
-  prompt += `- reviewGap = topCompetitorReviews - prospectReviews\n`;
-  prompt += `- Each review represents ~10-20 actual customers (most never leave reviews)\n`;
-  prompt += `- estimatedMissedCustomers = reviewGap × 1.5 (conservative multiplier)\n`;
-  prompt += `- missedJobs = estimatedMissedCustomers × closeRate\n`;
-  prompt += `- avgJobValue = (avgTicket.service × 3 + avgTicket.install) / 4\n`;
-  prompt += `- monthlyRevenueGap = missedJobs × avgJobValue\n`;
-  prompt += `- Apply 0.7 multiplier for the low estimate (conservative)\n`;
-  prompt += `- In the methodology field, cite the specific review counts used.\n\n`;
-
   // ── Output format ──
   prompt += `---
 
-Generate this JSON report. Use REAL numbers from the data above. Be specific, data-backed, and actionable.
+CRITICAL RULES:
+- Do NOT estimate revenue, dollar amounts, or financial projections. These cannot be verified and undermine credibility.
+- Focus ONLY on observable, verifiable competitive differences using the data provided above.
+- Every claim must be backed by specific numbers from the scraped data.
+- Be direct and specific about what competitors are doing better and exactly what needs to change.
+- Position Calverda as a web design and digital marketing agency that specializes in local service businesses.
+
+Generate this JSON report:
 
 {
-  "marketSnapshot": "2-3 sentence overview of the competitive landscape in this specific market",
-  "mapPackAnalysis": "who owns the top 3 spots and the primary reason why (reviews, age, content, etc.)",
-  "prospectPosition": "where the prospect currently sits relative to competitors and what's holding them back",
+  "marketSnapshot": "2-3 sentence overview of the competitive landscape. Reference specific competitor names, review counts, and rankings from the data.",
+  "mapPackAnalysis": "Who owns the top 3 map pack spots and the specific, observable reasons why — reference review counts, ratings, content volume, schema markup, etc.",
+  "prospectPosition": "Where the prospect sits relative to competitors. Be specific about the gaps. Don't sugarcoat it.",
   "keyFindings": [
-    "3-5 specific, data-backed findings with real numbers — e.g. 'You have 12 reviews vs the #1 competitor's 247, a 20x gap'"
+    "3-5 specific findings using real numbers from the data — e.g. 'You have 12 reviews vs the #1 competitor's 247'",
+    "Each finding must reference actual scraped data, not estimates or projections"
   ],
-  "revenueOpportunity": {
-    "monthlyLow": <number — conservative monthly estimate>,
-    "monthlyHigh": <number — optimistic monthly estimate>,
-    "annualLow": <number — monthlyLow × 12>,
-    "annualHigh": <number — monthlyHigh × 12>,
-    "methodology": "1-sentence explanation of how this was calculated using their specific numbers"
-  },
+  "competitiveGaps": [
+    {
+      "category": "Reviews & Reputation",
+      "yours": "Exact data about the prospect (e.g. '12 reviews, 4.2★ rating')",
+      "topCompetitor": "Exact data about the top competitor (e.g. '247 reviews, 4.8★ rating')",
+      "impact": "Why this specific gap hurts their rankings — explain the Google ranking factor simply. For example: 'Google heavily weights review volume and recency when ranking local businesses in the map pack. A 20x review gap signals to Google that competitors are more established and trusted.'",
+      "fix": "Specific, actionable step to close this gap (e.g. 'Implement a systematic review generation campaign — follow up with every completed job via text/email with a direct Google review link. Target 5-10 new reviews per month.')"
+    }
+  ],
   "topRecommendations": [
-    "3 specific, actionable recommendations in priority order — each should reference their specific data"
+    {
+      "action": "Specific action to take (e.g. 'Build a modern, SEO-optimized website')",
+      "why": "Why this matters — cite specific data points (e.g. 'Your site scores 34/100 on performance while competitors average 78. Slow, outdated sites lose visitors before they ever call.')",
+      "howCalverdaHelps": "How Calverda specifically addresses this — be concrete about what they deliver. For example: 'Calverda builds conversion-optimized websites with built-in local SEO, schema markup, and mobile-first performance — designed specifically for ${industry.name.toLowerCase()} businesses to rank in the map pack and turn visitors into calls.'"
+    }
   ],
-  "urgencyNote": "1 sentence about why acting now matters — reference a specific competitive trend"
+  "urgencyNote": "1 sentence about why acting now matters — reference a specific competitive trend from the data (e.g. 'Your top competitor gained X reviews in the last year while your profile has remained stagnant — the gap widens every month you wait.')"
 }
 
+Generate 4-6 competitive gaps. Only include categories where you have real, verifiable data to compare. Common categories:
+- Reviews & Reputation (review count, rating)
+- Website Content (word count, number of service pages, blog)
+- Technical SEO (schema markup, performance score, mobile readiness, HTTPS)
+- Google Business Profile (completeness, categories, hours, photos)
+- Online Visibility (indexed pages, traffic estimates)
+- Local Authority (map pack position, service area coverage)
+
+Generate exactly 3 recommendations in priority order.
 Return ONLY valid JSON. No markdown, no explanation.`;
 
   return prompt;

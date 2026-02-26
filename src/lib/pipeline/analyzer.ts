@@ -274,46 +274,90 @@ function buildFallbackIntel(
 ): CompetitiveIntel {
   const gbp = scraped.gbp;
   const competitors = scraped.competitors;
+  const audit = scraped.audit;
+  const name = gbp?.name ?? input.businessName;
 
   const prospectReviews = gbp?.reviewCount ?? 0;
-  const topCompetitorReviews = competitors[0]?.reviewCount ?? 50;
+  const topCompetitor = competitors[0];
+  const topCompetitorReviews = topCompetitor?.reviewCount ?? 50;
 
-  // Revenue gap based on review differential (verifiable data)
-  // Logic: review count correlates with call volume in local service businesses
-  const reviewGap = Math.max(topCompetitorReviews - prospectReviews, 10);
-  const avgJobValue =
-    (industry.avgTicket.service * 3 + industry.avgTicket.install) / 4;
-  // Each review roughly represents 10-20 customers (most don't leave reviews)
-  const estimatedMissedCustomers = reviewGap * 1.5;
-  const missedJobs = estimatedMissedCustomers * industry.closeRate;
-  const monthlyHigh = Math.round(missedJobs * avgJobValue);
-  const monthlyLow = Math.round(monthlyHigh * 0.7);
+  const gaps: CompetitiveIntel["competitiveGaps"] = [];
+
+  // Reviews gap
+  if (topCompetitor) {
+    gaps.push({
+      category: "Reviews & Reputation",
+      yours: `${prospectReviews} reviews, ${gbp?.rating ?? "N/A"}★`,
+      topCompetitor: `${topCompetitorReviews} reviews, ${topCompetitor.rating}★`,
+      impact: "Google heavily weights review volume and recency when ranking local businesses. A significant review gap means competitors appear more trustworthy to both Google and potential customers.",
+      fix: "Implement a systematic review generation campaign — follow up with every completed job via text/email with a direct Google review link.",
+    });
+  }
+
+  // Website content gap
+  if (topCompetitor?.homepageWordCount) {
+    gaps.push({
+      category: "Website Content",
+      yours: audit ? `Performance ${audit.scores.performance}/100` : "Limited website data",
+      topCompetitor: `${topCompetitor.homepageWordCount} words on homepage${topCompetitor.serviceCount ? `, ${topCompetitor.serviceCount} service pages` : ""}`,
+      impact: "Thin website content signals low authority to Google. Competitors with more detailed service pages rank higher for specific service searches.",
+      fix: "Build out dedicated service pages with detailed, unique content for each service offered.",
+    });
+  }
+
+  // Technical SEO gap
+  if (audit) {
+    gaps.push({
+      category: "Technical SEO",
+      yours: `Performance: ${audit.scores.performance}/100, SEO: ${audit.scores.seo}/100, Mobile: ${audit.mobileReady ? "Yes" : "No"}`,
+      topCompetitor: competitors.some((c) => c.hasSchema) ? "Schema markup detected on competitors" : "Competitor technical data limited",
+      impact: "Poor site performance and missing schema markup make it harder for Google to understand and rank your business. Slow sites also lose visitors before they call.",
+      fix: "Rebuild with modern, fast-loading architecture, add LocalBusiness schema markup, and ensure full mobile responsiveness.",
+    });
+  }
+
+  // GBP gap
+  if (gbp) {
+    gaps.push({
+      category: "Google Business Profile",
+      yours: `Completeness: ${gbp.completenessScore}/100`,
+      topCompetitor: "Top competitors maintain fully optimized profiles",
+      impact: "An incomplete Google Business Profile means you're less likely to appear in map pack results. Google prioritizes businesses with complete, active profiles.",
+      fix: "Complete all GBP fields — add business hours, service area, categories, photos, and respond to every review.",
+    });
+  }
 
   return {
     marketSnapshot: `The ${industry.name.toLowerCase()} market in ${input.location} is competitive with ${competitors.length} active businesses in the Google Maps results.`,
-    mapPackAnalysis: competitors.length > 0
-      ? `${competitors[0].name} leads the map pack with ${competitors[0].reviewCount} reviews and a ${competitors[0].rating} rating.`
+    mapPackAnalysis: topCompetitor
+      ? `${topCompetitor.name} leads the map pack with ${topCompetitorReviews} reviews and a ${topCompetitor.rating} rating.`
       : "Map pack data not available.",
-    prospectPosition: `With ${prospectReviews} reviews, ${gbp?.name ?? input.businessName} has significant room for growth compared to top competitors.`,
+    prospectPosition: `With ${prospectReviews} reviews, ${name} has significant room for growth compared to top competitors.`,
     keyFindings: [
       `Review gap: ${prospectReviews} reviews vs top competitor's ${topCompetitorReviews}`,
       gbp ? `GBP completeness: ${gbp.completenessScore}/100` : "Google Business Profile needs optimization",
-      scraped.audit
-        ? `Website performance: ${scraped.audit.scores.performance}/100`
+      audit
+        ? `Website performance: ${audit.scores.performance}/100`
         : "Website audit data not available",
     ].filter(Boolean),
-    revenueOpportunity: {
-      monthlyLow,
-      monthlyHigh,
-      annualLow: monthlyLow * 12,
-      annualHigh: monthlyHigh * 12,
-      methodology: `Based on ${reviewGap}-review gap with top competitor, ${(industry.closeRate * 100).toFixed(0)}% close rate, and $${avgJobValue.toFixed(0)} average job value for ${industry.name.toLowerCase()}.`,
-    },
+    competitiveGaps: gaps,
     topRecommendations: [
-      "Optimize Google Business Profile — complete all fields, add photos, respond to reviews",
-      "Build a modern, mobile-optimized website with strong local SEO",
-      "Implement a review generation strategy to close the review gap",
+      {
+        action: "Optimize Google Business Profile",
+        why: gbp ? `Your GBP is only ${gbp.completenessScore}% complete — competitors with fuller profiles get more visibility.` : "An optimized GBP is the foundation of local search visibility.",
+        howCalverdaHelps: `Calverda handles full GBP optimization for ${industry.name.toLowerCase()} businesses — from category selection to photo strategy to review response management.`,
+      },
+      {
+        action: "Build a modern, SEO-optimized website",
+        why: audit ? `Your site scores ${audit.scores.performance}/100 on performance. Slow, outdated sites lose visitors before they ever call.` : "A professional website is essential for converting search visitors into customers.",
+        howCalverdaHelps: `Calverda builds conversion-optimized websites with built-in local SEO, schema markup, and mobile-first performance — designed specifically for ${industry.name.toLowerCase()} businesses.`,
+      },
+      {
+        action: "Launch a review generation strategy",
+        why: `You have ${prospectReviews} reviews vs the top competitor's ${topCompetitorReviews}. Closing the review gap is the single highest-impact action for local rankings.`,
+        howCalverdaHelps: "Calverda sets up automated review request campaigns that integrate with your existing workflow — making it effortless to build your online reputation.",
+      },
     ],
-    urgencyNote: `Competitors are actively gaining reviews and visibility — every month of inaction widens the gap.`,
+    urgencyNote: "Competitors are actively gaining reviews and visibility — every month of inaction widens the gap.",
   };
 }
