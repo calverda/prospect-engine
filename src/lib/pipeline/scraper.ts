@@ -226,9 +226,9 @@ export async function scrapeCompetitors(
     return [];
   }
 
-  // Map to CompetitorProfile, take top N sorted by review count
+  // Map to CompetitorProfile — keep original map pack order (this IS the ranking)
   const competitors: CompetitorProfile[] = localResults
-    .slice(0, count + 2) // grab extras in case we need to dedupe
+    .slice(0, count)
     .map((r, i) => ({
       name: r.title,
       rating: r.rating ?? 0,
@@ -240,24 +240,24 @@ export async function scrapeCompetitors(
       serviceCount: null,
       hasSchema: null,
       hasBlog: null,
-    }))
-    .sort((a, b) => b.reviewCount - a.reviewCount)
-    .slice(0, count);
+    }));
 
-  // Enrich the top competitor with homepage crawl data
-  if (competitors.length > 0 && competitors[0].website) {
+  // Enrich all competitors with homepage crawl data (parallel, with timeout)
+  const crawlPromises = competitors.map(async (comp) => {
+    if (!comp.website) return;
     try {
-      const topSite = await crawlHomepageLight(competitors[0].website);
-      competitors[0].homepageWordCount = topSite.wordCount;
-      competitors[0].serviceCount = topSite.serviceCount;
-      competitors[0].hasSchema = topSite.hasSchema;
-      competitors[0].hasBlog = topSite.hasBlog;
+      const siteData = await crawlHomepageLight(comp.website);
+      comp.homepageWordCount = siteData.wordCount;
+      comp.serviceCount = siteData.serviceCount;
+      comp.hasSchema = siteData.hasSchema;
+      comp.hasBlog = siteData.hasBlog;
     } catch (err) {
       console.warn(
-        `[scrapeCompetitors] Failed to crawl top competitor homepage: ${err}`
+        `[scrapeCompetitors] Failed to crawl ${comp.name}: ${err}`
       );
     }
-  }
+  });
+  await Promise.allSettled(crawlPromises);
 
   return competitors;
 }

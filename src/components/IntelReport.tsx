@@ -324,8 +324,17 @@ export function IntelReport({ data }: IntelReportProps) {
         <p className="mt-1 text-lg font-bold text-white tracking-tight">
           Calverda
         </p>
-        <p className="mt-3 text-xs text-slate-600">
-          Data sourced from Google Business Profile, Google Maps, PageSpeed Insights, and proprietary analysis.
+        <div className="mx-auto mt-6 max-w-md text-left">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Data Sources</p>
+          <ul className="space-y-1 text-xs text-slate-600">
+            <li>Rankings &amp; competitor data — Google Maps (via SerpAPI)</li>
+            <li>Reviews &amp; business details — Google Places API</li>
+            {audit && <li>Performance scores — Google PageSpeed Insights</li>}
+            <li>Revenue estimates — review-count differential methodology</li>
+          </ul>
+        </div>
+        <p className="mt-4 text-xs text-slate-700">
+          Report generated {data.date}. Data reflects conditions at time of analysis.
         </p>
       </footer>
     </div>
