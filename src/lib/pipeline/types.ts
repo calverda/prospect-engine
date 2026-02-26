@@ -15,7 +15,10 @@ export type IndustryKey =
   | "dental"
   | "behavioral_health"
   | "pest_control"
-  | "general_contractor";
+  | "general_contractor"
+  | "church"
+  | "school"
+  | "local_government";
 
 export type PipelineStatus =
   | "saved"

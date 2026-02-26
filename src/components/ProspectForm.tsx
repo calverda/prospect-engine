@@ -13,6 +13,9 @@ const INDUSTRY_OPTIONS: { value: IndustryKey; label: string }[] = [
   { value: "behavioral_health", label: "Behavioral Health" },
   { value: "pest_control", label: "Pest Control" },
   { value: "general_contractor", label: "General Contractor" },
+  { value: "church", label: "Church / House of Worship" },
+  { value: "school", label: "School / Education" },
+  { value: "local_government", label: "Local Government" },
 ];
 
 export function ProspectForm() {
