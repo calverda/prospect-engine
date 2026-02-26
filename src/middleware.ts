@@ -19,7 +19,10 @@ export const config = {
   matcher: [
     "/",
     "/prospect/:path*",
+    "/territory",
     "/api/generate",
+    "/api/import",
+    "/api/territory",
     "/api/prospects/:path*",
   ],
 };

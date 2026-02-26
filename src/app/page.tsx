@@ -1,9 +1,11 @@
 import { db } from "@/lib/db";
 import { prospects } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
+import Link from "next/link";
 import { ProspectForm } from "@/components/ProspectForm";
 import { ProspectCard } from "@/components/ProspectCard";
 import { LeadCard } from "@/components/LeadCard";
+import { ImportLeads } from "@/components/ImportLeads";
 import { LogoutButton } from "@/components/LogoutButton";
 
 export const dynamic = "force-dynamic";
@@ -28,27 +30,40 @@ export default async function Dashboard() {
             Enter a business. Get a complete sales package.
           </p>
         </div>
-        <LogoutButton />
+        <div className="flex items-center gap-4">
+          <Link
+            href="/territory"
+            className="rounded-md border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 hover:bg-zinc-50"
+          >
+            Territory Map
+          </Link>
+          <LogoutButton />
+        </div>
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-8">
         <ProspectForm />
 
-        {savedLeads.length > 0 && (
-          <section className="mt-10">
-            <h2 className="mb-4 text-lg font-semibold">
+        <section className="mt-10">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">
               Saved Leads
-              <span className="ml-2 text-sm font-normal text-zinc-400">
-                ({savedLeads.length})
-              </span>
+              {savedLeads.length > 0 && (
+                <span className="ml-2 text-sm font-normal text-zinc-400">
+                  ({savedLeads.length})
+                </span>
+              )}
             </h2>
-            <div className="grid gap-3">
+          </div>
+          <ImportLeads />
+          {savedLeads.length > 0 && (
+            <div className="mt-4 grid gap-3">
               {savedLeads.map((lead) => (
                 <LeadCard key={lead.id} prospect={lead} />
               ))}
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
         <section className="mt-10">
           <h2 className="mb-4 text-lg font-semibold">Generated Prospects</h2>
