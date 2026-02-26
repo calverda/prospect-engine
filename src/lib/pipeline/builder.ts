@@ -1,28 +1,72 @@
-import type {
-  ProspectInput,
-  ScrapedData,
-  BusinessAnalysis,
-  BuildResult,
-} from "./types";
-import { createGitHubRepo } from "@/lib/utils/github";
-import { triggerVercelDeploy } from "@/lib/utils/vercel";
+import type { BuildResult } from "./types";
+import {
+  createRepoFromTemplate,
+  pushFileToRepo,
+  waitForRepo,
+} from "@/lib/utils/github";
+import {
+  createVercelProject,
+  triggerVercelDeploy,
+  waitForDeployment,
+} from "@/lib/utils/vercel";
 
+/**
+ * Build a prospect preview site:
+ * 1. Create GitHub repo from template
+ * 2. Push the content.json with prospect-specific data
+ * 3. Deploy to Vercel
+ * 4. Return URLs
+ */
 export async function buildSite(
-  analysis: BusinessAnalysis,
-  scraped: ScrapedData,
-  input: ProspectInput,
+  sitePlanJson: string,
   slug: string
 ): Promise<BuildResult> {
-  // TODO: Implementation options:
-  // Option A: Shell out to Claude Code CLI with the build brief
-  // Option B: Use Claude API to generate file tree, write to disk, push to GitHub
-  throw new Error("Not implemented: buildSite");
-}
+  const repoName = `preview-${slug}`;
 
-export async function buildSiteViaAPI(
-  buildBrief: string,
-  slug: string
-): Promise<BuildResult> {
-  // TODO: Claude API generates complete project as JSON file tree
-  throw new Error("Not implemented: buildSiteViaAPI");
+  console.log(`[builder] Creating repo from template: ${repoName}`);
+
+  // Step 1: Create repo from template
+  const { repoUrl, owner } = await createRepoFromTemplate(repoName);
+  console.log(`[builder] Repo created: ${repoUrl}`);
+
+  // Step 2: Wait for template content to be copied
+  console.log("[builder] Waiting for template content...");
+  await waitForRepo(owner, repoName);
+
+  // Step 3: Push content.json with prospect's site plan data
+  console.log("[builder] Pushing content.json...");
+  await pushFileToRepo(
+    owner,
+    repoName,
+    "data/content.json",
+    sitePlanJson,
+    "Update content.json with prospect data"
+  );
+
+  // Step 4: Create Vercel project and deploy
+  console.log("[builder] Creating Vercel project...");
+  try {
+    await createVercelProject(repoName, owner, repoName);
+  } catch (err) {
+    // Project might already exist if retrying
+    console.log(`[builder] Project creation note: ${err}`);
+  }
+
+  console.log("[builder] Triggering Vercel deployment...");
+  const deployUrl = await triggerVercelDeploy(repoName);
+  console.log(`[builder] Deployment started: ${deployUrl}`);
+
+  // Step 5: Wait for deployment to finish
+  console.log("[builder] Waiting for deployment to complete...");
+  const previewUrl = await waitForDeployment(
+    deployUrl.replace("https://", "")
+  );
+
+  console.log(`[builder] Deployed: ${previewUrl}`);
+
+  return {
+    repoUrl,
+    previewUrl,
+    slug,
+  };
 }
