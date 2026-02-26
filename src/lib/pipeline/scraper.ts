@@ -17,6 +17,12 @@ const SERPAPI_BASE = "https://serpapi.com/search.json";
 // ── Google Business Profile ──
 
 /** Check if a Places API result name is a reasonable match for the business we searched for */
+/** Common suffixes that don't help distinguish businesses */
+const FILLER_WORDS = new Set([
+  "llc", "inc", "corp", "co", "company", "services", "service",
+  "group", "solutions", "enterprises", "the", "and", "of",
+]);
+
 function isNameMatch(searchName: string, resultName: string): boolean {
   const normalize = (s: string) =>
     s
@@ -31,14 +37,35 @@ function isNameMatch(searchName: string, resultName: string): boolean {
   // Exact match
   if (search === result) return true;
 
-  // One contains the other (e.g. "Smith Plumbing" matches "Smith Plumbing & Heating LLC")
-  if (result.includes(search) || search.includes(result)) return true;
+  // Strip filler words for core comparison
+  const stripFiller = (s: string) =>
+    s.split(" ").filter((w) => !FILLER_WORDS.has(w) && w.length > 1).join(" ");
+  const searchCore = stripFiller(search);
+  const resultCore = stripFiller(result);
 
-  // Check word overlap — at least half the search words appear in the result
-  const searchWords = search.split(" ").filter((w) => w.length > 2);
-  const resultWords = new Set(result.split(" "));
-  const matches = searchWords.filter((w) => resultWords.has(w)).length;
-  if (searchWords.length > 0 && matches >= Math.ceil(searchWords.length / 2)) return true;
+  // Core names match exactly (e.g. "Alma Service" and "Alma Service LLC")
+  if (searchCore === resultCore) return true;
+
+  // One core contains the other, but only if the shorter one is a substantial
+  // portion of the longer one (prevents "alma" matching "alma house cleaning")
+  if (searchCore && resultCore) {
+    const shorter = searchCore.length <= resultCore.length ? searchCore : resultCore;
+    const longer = searchCore.length <= resultCore.length ? resultCore : searchCore;
+    if (longer.includes(shorter) && shorter.length >= longer.length * 0.5) return true;
+  }
+
+  // Check word overlap — all meaningful search words must appear in result,
+  // AND result shouldn't have too many extra words (prevents false positives
+  // like "Alma" matching "Alma house office cleaning")
+  const searchWords = searchCore.split(" ").filter((w) => w.length > 2);
+  const resultWords = resultCore.split(" ").filter((w) => w.length > 2);
+  const resultWordSet = new Set(resultWords);
+  const matches = searchWords.filter((w) => resultWordSet.has(w)).length;
+  if (
+    searchWords.length > 0 &&
+    matches === searchWords.length &&
+    resultWords.length <= searchWords.length + 1
+  ) return true;
 
   return false;
 }
