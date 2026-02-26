@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import type { Prospect } from "@/lib/db/schema";
 import { LeadCard } from "./LeadCard";
 
@@ -22,6 +23,8 @@ const PRIORITY_ORDER: Record<string, number> = { "High": 0, "Medium": 1, "Low": 
 const SITE_ORDER: Record<string, number> = { "No Website": 0, "Needs Overhaul": 1, "Needs Update": 2, "Acceptable": 3, "Well Maintained": 4 };
 
 export function LeadFilters({ leads }: LeadFiltersProps) {
+  const router = useRouter();
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [scoreFilter, setScoreFilter] = useState<ScoreFilter>("all");
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
   const [siteFilter, setSiteFilter] = useState<SiteFilter>("all");
@@ -143,6 +146,19 @@ export function LeadFilters({ leads }: LeadFiltersProps) {
   function SortIcon({ col }: { col: SortCol }) {
     if (sortCol !== col) return <span className="ml-0.5 text-zinc-300">↕</span>;
     return <span className="ml-0.5">{sortDir === "asc" ? "↑" : "↓"}</span>;
+  }
+
+  async function handleGenerate(lead: Prospect) {
+    setGeneratingId(lead.id);
+    try {
+      const res = await fetch(`/api/prospects/${lead.id}`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      window.location.href = `/prospect/${data.slug}`;
+    } catch {
+      alert("Failed to generate");
+      setGeneratingId(null);
+    }
   }
 
   const scoreColor = (score: string | null) => {
@@ -421,9 +437,20 @@ export function LeadFilters({ leads }: LeadFiltersProps) {
                         </div>
                       </td>
                       <td className="px-3 py-2.5">
-                        <a href={`/prospect/${lead.slug}`} className="text-[11px] text-blue-600 hover:underline whitespace-nowrap">
-                          View →
-                        </a>
+                        <div className="flex items-center gap-2">
+                          {lead.status === "saved" && (
+                            <button
+                              onClick={() => handleGenerate(lead)}
+                              disabled={generatingId === lead.id}
+                              className="rounded bg-zinc-900 px-2 py-1 text-[11px] font-medium text-white hover:bg-zinc-800 disabled:opacity-50 whitespace-nowrap"
+                            >
+                              {generatingId === lead.id ? "..." : "Generate"}
+                            </button>
+                          )}
+                          <a href={`/prospect/${lead.slug}`} className="text-[11px] text-blue-600 hover:underline whitespace-nowrap">
+                            View
+                          </a>
+                        </div>
                       </td>
                     </tr>
                   ))}

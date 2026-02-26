@@ -66,6 +66,7 @@ export default function ProspectDetail() {
   const [error, setError] = useState<string | null>(null);
   const [planning, setPlanning] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
   const [building, setBuilding] = useState(false);
   const [buildError, setBuildError] = useState<string | null>(null);
 
@@ -90,12 +91,25 @@ export default function ProspectDetail() {
   // Poll while pipeline is active
   useEffect(() => {
     if (!prospect) return;
-    const isActive = !["complete", "error"].includes(prospect.status);
+    const isActive = !["complete", "error", "saved"].includes(prospect.status);
     if (!isActive) return;
 
     const interval = setInterval(fetchProspect, 3000);
     return () => clearInterval(interval);
   }, [prospect, fetchProspect]);
+
+  const handleGenerate = async () => {
+    if (!prospect) return;
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/prospects/${prospect.id}`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to start generation");
+      await fetchProspect();
+    } catch {
+      alert("Failed to generate");
+      setGenerating(false);
+    }
+  };
 
   const handlePlanWebsite = async () => {
     if (!prospect) return;
@@ -331,6 +345,15 @@ export default function ProspectDetail() {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-4">
+          {prospect.status === "saved" && (
+            <button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="rounded-md bg-zinc-900 px-4 py-2 text-sm text-white hover:bg-zinc-800 disabled:opacity-50"
+            >
+              {generating ? "Starting..." : "Generate Package"}
+            </button>
+          )}
           {prospect.previewUrl && (
             <a
               href={prospect.previewUrl}
