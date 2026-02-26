@@ -14,9 +14,11 @@ export type IndustryKey =
   | "landscaping"
   | "dental"
   | "behavioral_health"
-  | "pest_control";
+  | "pest_control"
+  | "general_contractor";
 
 export type PipelineStatus =
+  | "saved"
   | "pending"
   | "scraping"
   | "analyzing"

@@ -4,6 +4,7 @@ const STATUS_CONFIG: Record<
   Status,
   { label: string; color: string }
 > = {
+  saved: { label: "Lead", color: "bg-slate-100 text-slate-500" },
   pending: { label: "Pending", color: "bg-zinc-100 text-zinc-600" },
   scraping: { label: "Scraping", color: "bg-blue-100 text-blue-700" },
   analyzing: { label: "Analyzing", color: "bg-purple-100 text-purple-700" },

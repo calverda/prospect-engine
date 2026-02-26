@@ -8,7 +8,7 @@ import { runPipeline } from "@/lib/pipeline";
 import type { ProspectInput } from "@/lib/pipeline/types";
 
 export async function POST(request: NextRequest) {
-  const body = (await request.json()) as ProspectInput;
+  const body = (await request.json()) as ProspectInput & { generateNow?: boolean };
 
   if (!body.businessName || !body.location || !body.industry) {
     return NextResponse.json(
@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const generateNow = body.generateNow !== false; // default true
   const id = uuid();
   const baseSlug = slugify(body.businessName);
 
@@ -28,6 +29,8 @@ export async function POST(request: NextRequest) {
     .limit(1);
   const slug = existing.length > 0 ? `${baseSlug}-${id.slice(0, 6)}` : baseSlug;
 
+  const status = generateNow ? "pending" : "saved";
+
   await db.insert(prospects).values({
     id,
     slug,
@@ -35,14 +38,16 @@ export async function POST(request: NextRequest) {
     websiteUrl: body.websiteUrl ?? null,
     location: body.location,
     industry: body.industry,
-    status: "pending",
+    status,
     createdAt: new Date().toISOString(),
   });
 
-  // Fire-and-forget — pipeline updates DB status as it progresses
-  runPipeline(body, id).catch((err) => {
-    console.error(`[api/generate] Pipeline failed for ${slug}:`, err);
-  });
+  if (generateNow) {
+    // Fire-and-forget — pipeline updates DB status as it progresses
+    runPipeline(body, id).catch((err) => {
+      console.error(`[api/generate] Pipeline failed for ${slug}:`, err);
+    });
+  }
 
-  return NextResponse.json({ id, slug, status: "pending" });
+  return NextResponse.json({ id, slug, status });
 }

@@ -250,4 +250,38 @@ export const INDUSTRIES: Record<IndustryKey, IndustryConfig> = {
     badgeText: "Free Inspection",
     availabilityText: "Same-day service available",
   },
+
+  general_contractor: {
+    name: "General Contracting",
+    searchTerms: [
+      "general contractor near me",
+      "home remodeling",
+      "kitchen renovation",
+      "bathroom remodel",
+      "home additions",
+      "roofing contractor",
+      "construction company",
+    ],
+    avgTicket: { service: 500, install: 35000 },
+    conversionRate: 0.07,
+    closeRate: 0.35,
+    gbpCategory: "General contractor",
+    defaultServices: [
+      { name: "Kitchen Remodeling", icon: "🍳", desc: "Complete kitchen renovations from design to finish." },
+      { name: "Bathroom Remodeling", icon: "🚿", desc: "Modern bathroom upgrades and full gut renovations." },
+      { name: "Home Additions", icon: "🏗️", desc: "Room additions, second stories, and garage conversions." },
+      { name: "Roofing", icon: "🏠", desc: "Roof replacement, repair, and new construction." },
+      { name: "Basement Finishing", icon: "🔨", desc: "Transform your basement into usable living space." },
+      { name: "Siding & Exteriors", icon: "🪟", desc: "Siding, windows, doors, and exterior renovations." },
+    ],
+    whyChoose: [
+      { title: "Licensed & Insured", desc: "Fully licensed general contractor with comprehensive insurance." },
+      { title: "Turnkey Projects", desc: "We manage every trade so you deal with one team." },
+      { title: "Transparent Pricing", desc: "Detailed written estimates with no surprise change orders." },
+      { title: "Quality Craftsmanship", desc: "Built to last with premium materials and skilled tradespeople." },
+    ],
+    warrantyText: "5-Year Workmanship Warranty",
+    badgeText: "Free Estimates",
+    availabilityText: "Scheduling consultations now",
+  },
 };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { IndustryKey } from "@/lib/pipeline/types";
 
 const INDUSTRY_OPTIONS: { value: IndustryKey; label: string }[] = [
@@ -11,6 +12,7 @@ const INDUSTRY_OPTIONS: { value: IndustryKey; label: string }[] = [
   { value: "dental", label: "Dental" },
   { value: "behavioral_health", label: "Behavioral Health" },
   { value: "pest_control", label: "Pest Control" },
+  { value: "general_contractor", label: "General Contractor" },
 ];
 
 export function ProspectForm() {
@@ -18,33 +20,46 @@ export function ProspectForm() {
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [location, setLocation] = useState("Long Island, NY");
   const [industry, setIndustry] = useState<IndustryKey>("hvac");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<"generate" | "save" | null>(null);
+  const router = useRouter();
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
+  async function handleAction(generateNow: boolean) {
+    setLoading(generateNow ? "generate" : "save");
 
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ businessName, websiteUrl, location, industry }),
+        body: JSON.stringify({ businessName, websiteUrl, location, industry, generateNow }),
       });
 
-      if (!res.ok) throw new Error("Generation failed");
+      if (!res.ok) throw new Error("Request failed");
 
       const data = await res.json();
-      window.location.href = `/prospect/${data.slug}`;
+
+      if (generateNow) {
+        window.location.href = `/prospect/${data.slug}`;
+      } else {
+        setBusinessName("");
+        setWebsiteUrl("");
+        router.refresh();
+      }
     } catch (err) {
       console.error(err);
-      alert("Failed to start generation. Check console for details.");
+      alert("Failed. Check console for details.");
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-lg border bg-white p-6">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleAction(true);
+      }}
+      className="rounded-lg border bg-white p-6"
+    >
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-sm font-medium">
@@ -95,13 +110,23 @@ export function ProspectForm() {
           </select>
         </div>
       </div>
-      <button
-        type="submit"
-        disabled={loading || !businessName}
-        className="mt-4 w-full rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
-      >
-        {loading ? "Generating..." : "Generate Package"}
-      </button>
+      <div className="mt-4 flex gap-3">
+        <button
+          type="button"
+          onClick={() => handleAction(false)}
+          disabled={loading !== null || !businessName}
+          className="rounded-md border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+        >
+          {loading === "save" ? "Saving..." : "Save as Lead"}
+        </button>
+        <button
+          type="submit"
+          disabled={loading !== null || !businessName}
+          className="flex-1 rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+        >
+          {loading === "generate" ? "Generating..." : "Generate Package"}
+        </button>
+      </div>
     </form>
   );
 }
