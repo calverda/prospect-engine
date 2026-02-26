@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Prospect } from "@/lib/db/schema";
 import type { IndustryKey } from "@/lib/pipeline/types";
@@ -94,7 +95,9 @@ export function LeadCard({ prospect }: LeadCardProps) {
     <div className={`flex items-center justify-between rounded-lg border border-dashed border-zinc-300 bg-white px-4 py-3 ${busy ? "opacity-50" : ""}`}>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <h3 className="font-medium text-sm truncate">{prospect.businessName}</h3>
+          <Link href={`/prospect/${prospect.slug}`} className="font-medium text-sm truncate hover:text-blue-600 hover:underline">
+            {prospect.businessName}
+          </Link>
           {prospect.leadScore && prospect.leadScore !== "Skip" && (
             <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
               prospect.leadScore === "Hot Lead" ? "bg-red-100 text-red-700" :
