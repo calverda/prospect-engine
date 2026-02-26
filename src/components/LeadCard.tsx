@@ -3,7 +3,32 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Prospect } from "@/lib/db/schema";
+import type { IndustryKey } from "@/lib/pipeline/types";
 import { formatDate } from "@/lib/utils/format";
+
+const INDUSTRY_OPTIONS: { value: IndustryKey; label: string }[] = [
+  { value: "hvac", label: "HVAC" },
+  { value: "plumbing", label: "Plumbing" },
+  { value: "electrician", label: "Electrical" },
+  { value: "landscaping", label: "Landscaping" },
+  { value: "dental", label: "Dental" },
+  { value: "behavioral_health", label: "Behavioral Health" },
+  { value: "pest_control", label: "Pest Control" },
+  { value: "general_contractor", label: "General Contractor" },
+  { value: "masonry", label: "Masonry & Concrete" },
+  { value: "fence", label: "Fencing" },
+  { value: "solar", label: "Solar" },
+  { value: "pool", label: "Pool Services" },
+  { value: "paving", label: "Paving" },
+  { value: "windows_doors", label: "Windows & Doors" },
+  { value: "church", label: "Church / House of Worship" },
+  { value: "school", label: "School / Education" },
+  { value: "local_government", label: "Local Government" },
+];
+
+function industryLabel(value: string): string {
+  return INDUSTRY_OPTIONS.find((o) => o.value === value)?.label ?? value;
+}
 
 interface LeadCardProps {
   prospect: Prospect;
@@ -13,6 +38,8 @@ export function LeadCard({ prospect }: LeadCardProps) {
   const router = useRouter();
   const [generating, setGenerating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -39,14 +66,61 @@ export function LeadCard({ prospect }: LeadCardProps) {
     }
   }
 
-  const busy = generating || deleting;
+  async function handleIndustryChange(newIndustry: string) {
+    if (newIndustry === prospect.industry) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/prospects/${prospect.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ industry: newIndustry }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      setEditing(false);
+      router.refresh();
+    } catch {
+      alert("Failed to update industry");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const busy = generating || deleting || saving;
 
   return (
     <div className={`flex items-center justify-between rounded-lg border border-dashed border-zinc-300 bg-white px-4 py-3 ${busy ? "opacity-50" : ""}`}>
       <div>
         <h3 className="font-medium text-sm">{prospect.businessName}</h3>
         <p className="text-xs text-zinc-400">
-          {prospect.industry} &middot; {prospect.location} &middot; {formatDate(prospect.createdAt)}
+          {editing ? (
+            <select
+              value={prospect.industry}
+              onChange={(e) => handleIndustryChange(e.target.value)}
+              onBlur={() => setEditing(false)}
+              autoFocus
+              disabled={saving}
+              className="rounded border border-zinc-300 bg-white px-1 py-0.5 text-xs text-zinc-700"
+            >
+              {INDUSTRY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="underline decoration-dashed underline-offset-2 hover:text-zinc-600"
+              title="Click to change industry"
+            >
+              {industryLabel(prospect.industry)}
+            </button>
+          )}
+          {" "}&middot; {prospect.location} &middot; {formatDate(prospect.createdAt)}
         </p>
       </div>
       <div className="flex items-center gap-2">
