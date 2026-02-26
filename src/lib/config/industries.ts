@@ -216,4 +216,38 @@ export const INDUSTRIES: Record<IndustryKey, IndustryConfig> = {
     badgeText: "Now Accepting Clients",
     availabilityText: "Appointments available this week",
   },
+
+  pest_control: {
+    name: "Pest Control",
+    searchTerms: [
+      "pest control near me",
+      "exterminator near me",
+      "termite treatment",
+      "bed bug treatment",
+      "rodent control",
+      "mosquito control",
+      "ant exterminator",
+    ],
+    avgTicket: { service: 250, install: 1800 },
+    conversionRate: 0.13,
+    closeRate: 0.52,
+    gbpCategory: "Pest control service",
+    defaultServices: [
+      { name: "General Pest Control", icon: "🐜", desc: "Eliminate ants, roaches, spiders, and other common household pests." },
+      { name: "Termite Treatment", icon: "🪵", desc: "Inspection, treatment, and prevention to protect your home's structure." },
+      { name: "Rodent Control", icon: "🐀", desc: "Humane and effective removal of mice, rats, and other rodents." },
+      { name: "Bed Bug Treatment", icon: "🛏️", desc: "Heat and chemical treatments for complete bed bug elimination." },
+      { name: "Mosquito & Tick Control", icon: "🦟", desc: "Yard treatments to reclaim your outdoor living spaces." },
+      { name: "Wildlife Exclusion", icon: "🦝", desc: "Seal entry points and remove unwanted wildlife safely." },
+    ],
+    whyChoose: [
+      { title: "Same-Day Service", desc: "Emergency pest situations handled within hours." },
+      { title: "Family & Pet Safe", desc: "EPA-approved treatments safe for your whole household." },
+      { title: "Guaranteed Results", desc: "If pests come back between treatments, so do we — free." },
+      { title: "Licensed Technicians", desc: "State-certified and continuously trained professionals." },
+    ],
+    warrantyText: "Pest-Free Guarantee",
+    badgeText: "Free Inspection",
+    availabilityText: "Same-day service available",
+  },
 };

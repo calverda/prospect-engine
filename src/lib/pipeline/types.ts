@@ -13,7 +13,8 @@ export type IndustryKey =
   | "electrician"
   | "landscaping"
   | "dental"
-  | "behavioral_health";
+  | "behavioral_health"
+  | "pest_control";
 
 export type PipelineStatus =
   | "pending"

@@ -10,6 +10,7 @@ const INDUSTRY_OPTIONS: { value: IndustryKey; label: string }[] = [
   { value: "landscaping", label: "Landscaping" },
   { value: "dental", label: "Dental" },
   { value: "behavioral_health", label: "Behavioral Health" },
+  { value: "pest_control", label: "Pest Control" },
 ];
 
 export function ProspectForm() {
