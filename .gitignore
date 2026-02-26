@@ -51,3 +51,6 @@ next-env.d.ts
 
 # env overrides
 .env.local
+
+# data files
+*.xlsx
