@@ -26,29 +26,48 @@ export async function scrapeGBP(
     return null;
   }
 
-  // Step 1: Find place by text query
+  // Step 1: Find place — try textsearch first (more forgiving), fall back to findplacefromtext
   const query = `${businessName} ${location}`;
-  const findUrl = new URL(`${PLACES_API_BASE}/findplacefromtext/json`);
-  findUrl.searchParams.set("input", query);
-  findUrl.searchParams.set("inputtype", "textquery");
-  findUrl.searchParams.set("fields", "place_id,name,formatted_address");
-  findUrl.searchParams.set("key", apiKey);
+  let placeId: string | null = null;
 
-  const findRes = await fetch(findUrl.toString());
-  if (!findRes.ok) {
-    console.error(`[scrapeGBP] Find place failed: ${findRes.status}`);
-    return null;
+  // Try textsearch (broader matching)
+  const textSearchUrl = new URL(`${PLACES_API_BASE}/textsearch/json`);
+  textSearchUrl.searchParams.set("query", query);
+  textSearchUrl.searchParams.set("key", apiKey);
+
+  console.log(`[scrapeGBP] Searching for "${query}" via textsearch...`);
+  const textRes = await fetch(textSearchUrl.toString());
+  if (textRes.ok) {
+    const textData = await textRes.json();
+    if (textData.results && textData.results.length > 0) {
+      placeId = textData.results[0].place_id;
+      console.log(`[scrapeGBP] Found via textsearch: ${textData.results[0].name} (place_id: ${placeId})`);
+    }
   }
 
-  const findData = await findRes.json();
-  const candidates = findData.candidates;
+  // Fallback to findplacefromtext
+  if (!placeId) {
+    console.log(`[scrapeGBP] textsearch missed, trying findplacefromtext...`);
+    const findUrl = new URL(`${PLACES_API_BASE}/findplacefromtext/json`);
+    findUrl.searchParams.set("input", query);
+    findUrl.searchParams.set("inputtype", "textquery");
+    findUrl.searchParams.set("fields", "place_id,name,formatted_address");
+    findUrl.searchParams.set("key", apiKey);
 
-  if (!candidates || candidates.length === 0) {
-    console.warn(`[scrapeGBP] No place found for "${query}"`);
-    return null;
+    const findRes = await fetch(findUrl.toString());
+    if (findRes.ok) {
+      const findData = await findRes.json();
+      if (findData.candidates && findData.candidates.length > 0) {
+        placeId = findData.candidates[0].place_id;
+        console.log(`[scrapeGBP] Found via findplacefromtext: ${placeId}`);
+      }
+    }
   }
 
-  const placeId = candidates[0].place_id;
+  if (!placeId) {
+    console.warn(`[scrapeGBP] No place found for "${query}" with either method`);
+    return null;
+  }
 
   // Step 2: Get place details
   const detailFields = [
@@ -436,15 +455,11 @@ export async function estimateTraffic(
     .map((r) => r.title ?? "")
     .filter(Boolean);
 
-  // Conservative traffic estimate
-  const estimatedMonthlyTraffic = indexedPages * 3;
-  const trafficValue = estimatedMonthlyTraffic * 2.5; // avg local service CPC
-
   return {
     domain,
     indexedPages,
-    estimatedMonthlyTraffic,
-    trafficValue,
+    estimatedMonthlyTraffic: 0, // not estimated — only verifiable data
+    trafficValue: 0,
     topKeywords,
   };
 }
