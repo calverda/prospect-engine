@@ -251,18 +251,18 @@ function buildFallbackIntel(
 ): CompetitiveIntel {
   const gbp = scraped.gbp;
   const competitors = scraped.competitors;
-  const traffic = scraped.traffic;
 
   const prospectReviews = gbp?.reviewCount ?? 0;
   const topCompetitorReviews = competitors[0]?.reviewCount ?? 50;
-  const prospectTraffic = traffic?.estimatedMonthlyTraffic ?? 0;
 
-  // Conservative revenue gap calculation
+  // Revenue gap based on review differential (verifiable data)
+  // Logic: review count correlates with call volume in local service businesses
+  const reviewGap = Math.max(topCompetitorReviews - prospectReviews, 10);
   const avgJobValue =
     (industry.avgTicket.service * 3 + industry.avgTicket.install) / 4;
-  const estimatedGapTraffic = Math.max(prospectTraffic * 2, 100);
-  const missedCalls = estimatedGapTraffic * industry.conversionRate;
-  const missedJobs = missedCalls * industry.closeRate;
+  // Each review roughly represents 10-20 customers (most don't leave reviews)
+  const estimatedMissedCustomers = reviewGap * 1.5;
+  const missedJobs = estimatedMissedCustomers * industry.closeRate;
   const monthlyHigh = Math.round(missedJobs * avgJobValue);
   const monthlyLow = Math.round(monthlyHigh * 0.7);
 
@@ -284,7 +284,7 @@ function buildFallbackIntel(
       monthlyHigh,
       annualLow: monthlyLow * 12,
       annualHigh: monthlyHigh * 12,
-      methodology: `Based on estimated traffic gap, ${(industry.conversionRate * 100).toFixed(0)}% conversion rate, ${(industry.closeRate * 100).toFixed(0)}% close rate, and $${avgJobValue.toFixed(0)} average job value.`,
+      methodology: `Based on ${reviewGap}-review gap with top competitor, ${(industry.closeRate * 100).toFixed(0)}% close rate, and $${avgJobValue.toFixed(0)} average job value for ${industry.name.toLowerCase()}.`,
     },
     topRecommendations: [
       "Optimize Google Business Profile — complete all fields, add photos, respond to reviews",

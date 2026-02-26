@@ -65,14 +65,15 @@ export function buildIntelPrompt(
 
   // ── Revenue gap context ──
   prompt += `## REVENUE GAP CALCULATION CONTEXT\n`;
-  prompt += `Use these formulas for the revenue opportunity:\n`;
-  prompt += `- trafficGap = topCompetitorTraffic - prospectTraffic\n`;
-  prompt += `- missedCalls = trafficGap × conversionRate\n`;
-  prompt += `- missedJobs = missedCalls × closeRate\n`;
+  prompt += `Use the review count differential as the primary signal:\n`;
+  prompt += `- reviewGap = topCompetitorReviews - prospectReviews\n`;
+  prompt += `- Each review represents ~10-20 actual customers (most never leave reviews)\n`;
+  prompt += `- estimatedMissedCustomers = reviewGap × 1.5 (conservative multiplier)\n`;
+  prompt += `- missedJobs = estimatedMissedCustomers × closeRate\n`;
   prompt += `- avgJobValue = (avgTicket.service × 3 + avgTicket.install) / 4\n`;
   prompt += `- monthlyRevenueGap = missedJobs × avgJobValue\n`;
   prompt += `- Apply 0.7 multiplier for the low estimate (conservative)\n`;
-  prompt += `- If traffic data is unavailable, estimate based on review count differential and industry averages.\n\n`;
+  prompt += `- In the methodology field, cite the specific review counts used.\n\n`;
 
   // ── Output format ──
   prompt += `---
