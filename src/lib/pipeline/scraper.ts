@@ -16,6 +16,33 @@ const SERPAPI_BASE = "https://serpapi.com/search.json";
 
 // ── Google Business Profile ──
 
+/** Check if a Places API result name is a reasonable match for the business we searched for */
+function isNameMatch(searchName: string, resultName: string): boolean {
+  const normalize = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const search = normalize(searchName);
+  const result = normalize(resultName);
+
+  // Exact match
+  if (search === result) return true;
+
+  // One contains the other (e.g. "Smith Plumbing" matches "Smith Plumbing & Heating LLC")
+  if (result.includes(search) || search.includes(result)) return true;
+
+  // Check word overlap — at least half the search words appear in the result
+  const searchWords = search.split(" ").filter((w) => w.length > 2);
+  const resultWords = new Set(result.split(" "));
+  const matches = searchWords.filter((w) => resultWords.has(w)).length;
+  if (searchWords.length > 0 && matches >= Math.ceil(searchWords.length / 2)) return true;
+
+  return false;
+}
+
 export async function scrapeGBP(
   businessName: string,
   location: string
@@ -40,8 +67,16 @@ export async function scrapeGBP(
   if (textRes.ok) {
     const textData = await textRes.json();
     if (textData.results && textData.results.length > 0) {
-      placeId = textData.results[0].place_id;
-      console.log(`[scrapeGBP] Found via textsearch: ${textData.results[0].name} (place_id: ${placeId})`);
+      // Validate the result actually matches our business name
+      const bestMatch = textData.results.find(
+        (r: { name: string }) => isNameMatch(businessName, r.name)
+      );
+      if (bestMatch) {
+        placeId = bestMatch.place_id;
+        console.log(`[scrapeGBP] Found via textsearch: ${bestMatch.name} (place_id: ${placeId})`);
+      } else {
+        console.log(`[scrapeGBP] textsearch returned results but none matched "${businessName}" — top result was "${textData.results[0].name}"`);
+      }
     }
   }
 
@@ -58,14 +93,21 @@ export async function scrapeGBP(
     if (findRes.ok) {
       const findData = await findRes.json();
       if (findData.candidates && findData.candidates.length > 0) {
-        placeId = findData.candidates[0].place_id;
-        console.log(`[scrapeGBP] Found via findplacefromtext: ${placeId}`);
+        const bestCandidate = findData.candidates.find(
+          (c: { name: string }) => isNameMatch(businessName, c.name)
+        );
+        if (bestCandidate) {
+          placeId = bestCandidate.place_id;
+          console.log(`[scrapeGBP] Found via findplacefromtext: ${bestCandidate.name} (place_id: ${placeId})`);
+        } else {
+          console.log(`[scrapeGBP] findplacefromtext returned candidates but none matched "${businessName}" — top was "${findData.candidates[0].name}"`);
+        }
       }
     }
   }
 
   if (!placeId) {
-    console.warn(`[scrapeGBP] No place found for "${query}" with either method`);
+    console.warn(`[scrapeGBP] No matching place found for "${businessName}" in ${location}`);
     return null;
   }
 
