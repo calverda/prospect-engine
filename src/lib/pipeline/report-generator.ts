@@ -1,4 +1,10 @@
-import type { CompetitiveIntel, CompetitorProfile, GBPData } from "./types";
+import type {
+  CompetitiveIntel,
+  CompetitorProfile,
+  GBPData,
+  WebsiteAudit,
+  TrafficData,
+} from "./types";
 
 export interface ReportData {
   businessName: string;
@@ -10,7 +16,11 @@ export interface ReportData {
   prospect: {
     rating: number;
     reviewCount: number;
+    gbpCompleteness: number | null;
   };
+  audit: WebsiteAudit | null;
+  traffic: TrafficData | null;
+  contact: { phone: string; email: string } | null;
 }
 
 export function buildReportData(
@@ -19,7 +29,9 @@ export function buildReportData(
   industry: string,
   intel: CompetitiveIntel,
   competitors: CompetitorProfile[],
-  gbp: GBPData | null
+  gbp: GBPData | null,
+  audit: WebsiteAudit | null = null,
+  traffic: TrafficData | null = null
 ): ReportData {
   return {
     businessName,
@@ -34,6 +46,10 @@ export function buildReportData(
     prospect: {
       rating: gbp?.rating ?? 0,
       reviewCount: gbp?.reviewCount ?? 0,
+      gbpCompleteness: gbp?.completenessScore ?? null,
     },
+    audit,
+    traffic,
+    contact: null,
   };
 }

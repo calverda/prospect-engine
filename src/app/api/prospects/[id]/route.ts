@@ -32,3 +32,13 @@ export async function PATCH(
 
   return NextResponse.json({ ok: true });
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  await db.delete(prospects).where(eq(prospects.id, id));
+
+  return NextResponse.json({ ok: true });
+}

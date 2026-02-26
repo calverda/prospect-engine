@@ -3,7 +3,13 @@ import { prospects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { IntelReport } from "@/components/IntelReport";
-import type { CompetitiveIntel, CompetitorProfile } from "@/lib/pipeline/types";
+import { DownloadPdfButton } from "@/components/DownloadPdfButton";
+import type {
+  CompetitiveIntel,
+  CompetitorProfile,
+  WebsiteAudit,
+  TrafficData,
+} from "@/lib/pipeline/types";
 import type { ReportData } from "@/lib/pipeline/report-generator";
 
 export default async function ReportPage({
@@ -37,6 +43,12 @@ export default async function ReportPage({
     ? (JSON.parse(prospect.competitorData) as CompetitorProfile[])
     : [];
   const gbpData = prospect.gbpData ? JSON.parse(prospect.gbpData) : null;
+  const audit = prospect.auditData
+    ? (JSON.parse(prospect.auditData) as WebsiteAudit)
+    : null;
+  const traffic = prospect.trafficData
+    ? (JSON.parse(prospect.trafficData) as TrafficData)
+    : null;
 
   const reportData: ReportData = {
     businessName: prospect.businessName,
@@ -51,11 +63,26 @@ export default async function ReportPage({
     prospect: {
       rating: gbpData?.rating ?? 0,
       reviewCount: gbpData?.reviewCount ?? 0,
+      gbpCompleteness: gbpData?.completenessScore ?? null,
     },
+    audit,
+    traffic,
+    contact:
+      process.env.CALVERDA_PHONE && process.env.CALVERDA_EMAIL
+        ? { phone: process.env.CALVERDA_PHONE, email: process.env.CALVERDA_EMAIL }
+        : null,
   };
 
-  // TODO: Track view count
-  // await db.update(prospects).set({ reportViewCount: (prospect.reportViewCount ?? 0) + 1 }).where(eq(prospects.slug, slug));
+  // Track view count
+  await db
+    .update(prospects)
+    .set({ reportViewCount: (prospect.reportViewCount ?? 0) + 1 })
+    .where(eq(prospects.slug, slug));
 
-  return <IntelReport data={reportData} />;
+  return (
+    <>
+      <IntelReport data={reportData} />
+      <DownloadPdfButton />
+    </>
+  );
 }
