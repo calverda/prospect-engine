@@ -1,5 +1,5 @@
 import { collectAllData } from "./scraper";
-import { analyzeAll } from "./analyzer";
+import { analyzeAll, resetUsageAccumulator, getAccumulatedUsage } from "./analyzer";
 import type { ProspectInput, PipelineResult } from "./types";
 import { db } from "@/lib/db";
 import { prospects } from "@/lib/db/schema";
@@ -45,7 +45,9 @@ export async function runPipeline(
       statusMessage: "Running business analysis and competitive intel via Claude...",
     });
 
+    resetUsageAccumulator();
     const { analysis, intel, buildBrief } = await analyzeAll(scraped, input);
+    const usage = getAccumulatedUsage();
 
     const revenueGapMonthly = intel.revenueOpportunity?.monthlyHigh ?? null;
     const revenueGapAnnual = intel.revenueOpportunity?.annualHigh ?? null;
@@ -56,6 +58,9 @@ export async function runPipeline(
       buildBrief,
       revenueGapMonthly,
       revenueGapAnnual,
+      tokensIn: usage.inputTokens,
+      tokensOut: usage.outputTokens,
+      apiCost: usage.cost.toFixed(4),
     });
 
     // Phase 3: Build — skipped for POC

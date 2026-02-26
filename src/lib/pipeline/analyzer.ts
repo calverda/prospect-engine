@@ -13,6 +13,43 @@ import { buildSitePlanPrompt } from "@/lib/prompts/site-plan";
 
 const MODEL = "claude-sonnet-4-20250514";
 
+// Sonnet 4 pricing per 1M tokens
+const PRICE_INPUT_PER_M = 3;
+const PRICE_OUTPUT_PER_M = 15;
+
+// ── Token tracking ──
+
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cost: number; // in dollars
+}
+
+/** Accumulator for tracking token usage across multiple API calls */
+const _usageAccumulator: TokenUsage = { inputTokens: 0, outputTokens: 0, cost: 0 };
+
+export function getAccumulatedUsage(): TokenUsage {
+  return { ..._usageAccumulator };
+}
+
+export function resetUsageAccumulator(): void {
+  _usageAccumulator.inputTokens = 0;
+  _usageAccumulator.outputTokens = 0;
+  _usageAccumulator.cost = 0;
+}
+
+function trackUsage(inputTokens: number, outputTokens: number): void {
+  const cost =
+    (inputTokens / 1_000_000) * PRICE_INPUT_PER_M +
+    (outputTokens / 1_000_000) * PRICE_OUTPUT_PER_M;
+  _usageAccumulator.inputTokens += inputTokens;
+  _usageAccumulator.outputTokens += outputTokens;
+  _usageAccumulator.cost += cost;
+  console.log(
+    `[analyzer] Tokens: ${inputTokens} in / ${outputTokens} out ($${cost.toFixed(4)})`
+  );
+}
+
 // ── Claude API ──
 
 let _client: Anthropic | null = null;
@@ -40,6 +77,9 @@ async function callClaude(
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
   });
+
+  // Track token usage
+  trackUsage(message.usage.input_tokens, message.usage.output_tokens);
 
   // Extract text from the response
   const textBlock = message.content.find((b) => b.type === "text");

@@ -49,6 +49,11 @@ export const prospects = pgTable("prospects", {
   revenueGapMonthly: integer("revenue_gap_monthly"),
   revenueGapAnnual: integer("revenue_gap_annual"),
 
+  // Token usage tracking
+  tokensIn: integer("tokens_in").default(0),
+  tokensOut: integer("tokens_out").default(0),
+  apiCost: text("api_cost"),    // stored as string to avoid float issues, e.g. "0.14"
+
   // Engagement tracking
   reportViewCount: integer("report_view_count").default(0),
   previewViewCount: integer("preview_view_count").default(0),

@@ -64,7 +64,19 @@ export default async function Dashboard() {
         </section>
 
         <section className="mt-10">
-          <h2 className="mb-4 text-lg font-semibold">Generated Prospects</h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Generated Prospects</h2>
+            {generated.length > 0 && (() => {
+              const totalCost = generated.reduce((sum, p) => sum + parseFloat(p.apiCost ?? "0"), 0);
+              const totalIn = generated.reduce((sum, p) => sum + (p.tokensIn ?? 0), 0);
+              const totalOut = generated.reduce((sum, p) => sum + (p.tokensOut ?? 0), 0);
+              return totalCost > 0 ? (
+                <span className="text-xs text-zinc-400" title={`${(totalIn / 1000).toFixed(1)}k tokens in / ${(totalOut / 1000).toFixed(1)}k tokens out`}>
+                  API spend: ${totalCost.toFixed(2)} across {generated.filter((p) => p.apiCost).length} prospects
+                </span>
+              ) : null;
+            })()}
+          </div>
           {generated.length === 0 ? (
             <p className="text-sm text-zinc-400">
               No prospects yet. Generate your first package above.

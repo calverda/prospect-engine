@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { prospects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { generateSitePlan } from "@/lib/pipeline/analyzer";
+import { generateSitePlan, resetUsageAccumulator, getAccumulatedUsage } from "@/lib/pipeline/analyzer";
 import type { ScrapedData, BusinessAnalysis } from "@/lib/pipeline/types";
 
 export async function POST(
@@ -54,11 +54,23 @@ export async function POST(
   const analysis: BusinessAnalysis = JSON.parse(prospect.businessAnalysis);
 
   try {
+    resetUsageAccumulator();
     const sitePlan = await generateSitePlan(scraped, analysis);
+    const usage = getAccumulatedUsage();
+
+    // Add site plan tokens to existing totals
+    const prevIn = prospect.tokensIn ?? 0;
+    const prevOut = prospect.tokensOut ?? 0;
+    const prevCost = parseFloat(prospect.apiCost ?? "0");
 
     await db
       .update(prospects)
-      .set({ sitePlan })
+      .set({
+        sitePlan,
+        tokensIn: prevIn + usage.inputTokens,
+        tokensOut: prevOut + usage.outputTokens,
+        apiCost: (prevCost + usage.cost).toFixed(4),
+      })
       .where(eq(prospects.id, id));
 
     return NextResponse.json({ sitePlan: JSON.parse(sitePlan) });

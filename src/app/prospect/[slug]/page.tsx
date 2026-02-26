@@ -296,7 +296,7 @@ export default function ProspectDetail() {
 
         {/* Quick Stats */}
         {prospect.status === "complete" && (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div className="rounded-lg border bg-white p-4">
               <p className="text-sm text-zinc-500">Report Views</p>
               <p className="text-2xl font-bold">
@@ -308,6 +308,17 @@ export default function ProspectDetail() {
               <p className="text-2xl font-bold">
                 {prospect.previewViewCount ?? 0}
               </p>
+            </div>
+            <div className="rounded-lg border bg-white p-4">
+              <p className="text-sm text-zinc-500">API Cost</p>
+              <p className="text-2xl font-bold">
+                {prospect.apiCost ? `$${parseFloat(prospect.apiCost).toFixed(2)}` : "—"}
+              </p>
+              {(prospect.tokensIn || prospect.tokensOut) && (
+                <p className="text-[10px] text-zinc-400 mt-1">
+                  {((prospect.tokensIn ?? 0) / 1000).toFixed(1)}k in / {((prospect.tokensOut ?? 0) / 1000).toFixed(1)}k out
+                </p>
+              )}
             </div>
             <div className="rounded-lg border bg-white p-4">
               <p className="text-sm text-zinc-500">Status</p>
