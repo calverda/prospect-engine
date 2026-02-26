@@ -12,8 +12,14 @@ type ScoreFilter = "all" | "Hot Lead" | "Warm Lead" | "Cool Lead" | "Skip";
 type PriorityFilter = "all" | "High" | "Medium" | "Low";
 type SiteFilter = "all" | "No Website" | "Needs Overhaul" | "Needs Update" | "Acceptable" | "Well Maintained";
 type ViewMode = "table" | "cards";
+type SortCol = "business" | "location" | "score" | "priority" | "site";
+type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 25;
+
+const SCORE_ORDER: Record<string, number> = { "Hot Lead": 0, "Warm Lead": 1, "Cool Lead": 2, "Skip": 3 };
+const PRIORITY_ORDER: Record<string, number> = { "High": 0, "Medium": 1, "Low": 2 };
+const SITE_ORDER: Record<string, number> = { "No Website": 0, "Needs Overhaul": 1, "Needs Update": 2, "Acceptable": 3, "Well Maintained": 4 };
 
 export function LeadFilters({ leads }: LeadFiltersProps) {
   const [scoreFilter, setScoreFilter] = useState<ScoreFilter>("all");
@@ -23,6 +29,8 @@ export function LeadFilters({ leads }: LeadFiltersProps) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [sortCol, setSortCol] = useState<SortCol>("score");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const filtered = useMemo(() => {
     let result = leads;
@@ -52,10 +60,40 @@ export function LeadFilters({ leads }: LeadFiltersProps) {
     return result;
   }, [leads, scoreFilter, priorityFilter, siteFilter, hideRedFlags, search]);
 
+  // Sort
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    const dir = sortDir === "asc" ? 1 : -1;
+
+    arr.sort((a, b) => {
+      let cmp = 0;
+      switch (sortCol) {
+        case "business":
+          cmp = a.businessName.localeCompare(b.businessName);
+          break;
+        case "location":
+          cmp = a.location.localeCompare(b.location);
+          break;
+        case "score":
+          cmp = (SCORE_ORDER[a.leadScore ?? ""] ?? 99) - (SCORE_ORDER[b.leadScore ?? ""] ?? 99);
+          break;
+        case "priority":
+          cmp = (PRIORITY_ORDER[a.salesPriority ?? ""] ?? 99) - (PRIORITY_ORDER[b.salesPriority ?? ""] ?? 99);
+          break;
+        case "site":
+          cmp = (SITE_ORDER[a.siteQuality ?? ""] ?? 99) - (SITE_ORDER[b.siteQuality ?? ""] ?? 99);
+          break;
+      }
+      return cmp * dir;
+    });
+
+    return arr;
+  }, [filtered, sortCol, sortDir]);
+
   // Reset to page 1 when filters change
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const paged = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   // Count badges
   const counts = useMemo(() => {
@@ -90,6 +128,21 @@ export function LeadFilters({ leads }: LeadFiltersProps) {
   function handleFilterChange<T>(setter: (v: T) => void, value: T) {
     setter(value);
     setPage(1);
+  }
+
+  function handleSort(col: SortCol) {
+    if (sortCol === col) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+    setPage(1);
+  }
+
+  function SortIcon({ col }: { col: SortCol }) {
+    if (sortCol !== col) return <span className="ml-0.5 text-zinc-300">↕</span>;
+    return <span className="ml-0.5">{sortDir === "asc" ? "↑" : "↓"}</span>;
   }
 
   const scoreColor = (score: string | null) => {
@@ -268,9 +321,9 @@ export function LeadFilters({ leads }: LeadFiltersProps) {
       {/* Results count + view toggle */}
       <div className="flex items-center justify-between">
         <p className="text-xs text-zinc-400">
-          Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length} leads
+          Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, sorted.length)} of {sorted.length} leads
           {hasFilters && <> (filtered from {leads.length})</>}
-          {hasFilters && filtered.length > 0 && (
+          {hasFilters && sorted.length > 0 && (
             <> &middot; {filtered.filter((l) => l.contactEmail).length} with email</>
           )}
         </p>
@@ -304,11 +357,11 @@ export function LeadFilters({ leads }: LeadFiltersProps) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-zinc-50 text-left text-xs font-medium text-zinc-500">
-                    <th className="px-3 py-2">Business</th>
-                    <th className="px-3 py-2">Location</th>
-                    <th className="px-3 py-2">Score</th>
-                    <th className="px-3 py-2">Priority</th>
-                    <th className="px-3 py-2">Site</th>
+                    <th className="px-3 py-2"><button type="button" onClick={() => handleSort("business")} className="hover:text-zinc-900">Business<SortIcon col="business" /></button></th>
+                    <th className="px-3 py-2"><button type="button" onClick={() => handleSort("location")} className="hover:text-zinc-900">Location<SortIcon col="location" /></button></th>
+                    <th className="px-3 py-2"><button type="button" onClick={() => handleSort("score")} className="hover:text-zinc-900">Score<SortIcon col="score" /></button></th>
+                    <th className="px-3 py-2"><button type="button" onClick={() => handleSort("priority")} className="hover:text-zinc-900">Priority<SortIcon col="priority" /></button></th>
+                    <th className="px-3 py-2"><button type="button" onClick={() => handleSort("site")} className="hover:text-zinc-900">Site<SortIcon col="site" /></button></th>
                     <th className="px-3 py-2">Contact</th>
                     <th className="px-3 py-2"></th>
                   </tr>
