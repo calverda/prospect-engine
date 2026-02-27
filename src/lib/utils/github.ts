@@ -24,7 +24,7 @@ export async function createGitHubRepo(name: string): Promise<string> {
 /** Create a new repo from the prospect-site-template */
 export async function createRepoFromTemplate(
   repoName: string
-): Promise<{ repoUrl: string; owner: string }> {
+): Promise<{ repoUrl: string; owner: string; repoId: number }> {
   const octokit = getOctokit();
 
   try {
@@ -40,6 +40,7 @@ export async function createRepoFromTemplate(
     return {
       repoUrl: data.html_url,
       owner: data.owner.login,
+      repoId: data.id,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -52,6 +53,7 @@ export async function createRepoFromTemplate(
       return {
         repoUrl: data.html_url,
         owner: data.owner.login,
+        repoId: data.id,
       };
     }
     throw err;

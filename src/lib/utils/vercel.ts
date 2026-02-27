@@ -39,7 +39,7 @@ export async function createVercelProject(
 }
 
 /** Trigger a deployment for a Vercel project from its connected GitHub repo */
-export async function triggerVercelDeploy(repoName: string): Promise<string> {
+export async function triggerVercelDeploy(repoName: string, repoId: number): Promise<string> {
   const res = await fetch(`${VERCEL_API}/v13/deployments`, {
     method: "POST",
     headers: getHeaders(),
@@ -47,7 +47,7 @@ export async function triggerVercelDeploy(repoName: string): Promise<string> {
       name: repoName,
       gitSource: {
         type: "github",
-        repo: `calverda/${repoName}`,
+        repoId: String(repoId),
         ref: "main",
       },
     }),

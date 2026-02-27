@@ -25,8 +25,8 @@ export async function buildSite(
   console.log(`[builder] Creating repo from template: ${repoName}`);
 
   // Step 1: Create repo from template
-  const { repoUrl, owner } = await createRepoFromTemplate(repoName);
-  console.log(`[builder] Repo created: ${repoUrl}`);
+  const { repoUrl, owner, repoId } = await createRepoFromTemplate(repoName);
+  console.log(`[builder] Repo created: ${repoUrl} (id: ${repoId})`);
 
   // Step 2: Push content.json — retries internally until template repo is ready
   console.log("[builder] Pushing content.json...");
@@ -48,7 +48,7 @@ export async function buildSite(
   }
 
   console.log("[builder] Triggering Vercel deployment...");
-  const deployUrl = await triggerVercelDeploy(repoName);
+  const deployUrl = await triggerVercelDeploy(repoName, repoId);
   console.log(`[builder] Deployment started: ${deployUrl}`);
 
   // Step 5: Wait for deployment to finish
