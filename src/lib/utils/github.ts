@@ -45,7 +45,6 @@ export async function createRepoFromTemplate(
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes("Name already exists")) {
       console.log(`[github] Repo ${TEMPLATE_OWNER}/${repoName} already exists — reusing`);
-      // Repo exists from a previous attempt; fetch its info and reuse it
       const { data } = await octokit.rest.repos.get({
         owner: TEMPLATE_OWNER,
         repo: repoName,
@@ -59,65 +58,62 @@ export async function createRepoFromTemplate(
   }
 }
 
-/** Push or update a file in a repo */
+/**
+ * Push or update a file in a repo, with retries.
+ * Retries handle the case where a template repo isn't ready yet.
+ */
 export async function pushFileToRepo(
   owner: string,
   repo: string,
   path: string,
   content: string,
-  message: string
+  message: string,
+  maxRetries = 40,
+  retryDelayMs = 3000
 ): Promise<void> {
   const octokit = getOctokit();
 
-  // Check if file already exists to get its SHA
-  let sha: string | undefined;
-  try {
-    const { data } = await octokit.rest.repos.getContent({
-      owner,
-      repo,
-      path,
-    });
-    if (!Array.isArray(data) && data.type === "file") {
-      sha = data.sha;
-    }
-  } catch {
-    // File doesn't exist yet — that's fine
-  }
-
-  await octokit.rest.repos.createOrUpdateFileContents({
-    owner,
-    repo,
-    path,
-    message,
-    content: Buffer.from(content).toString("base64"),
-    sha,
-  });
-}
-
-/** Wait for repo to be ready (template generation can take a moment) */
-export async function waitForRepo(
-  owner: string,
-  repo: string,
-  maxWaitMs = 120000
-): Promise<void> {
-  const octokit = getOctokit();
-  const start = Date.now();
-  let attempt = 0;
-
-  while (Date.now() - start < maxWaitMs) {
-    attempt++;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // Check for actual file content — data.size is unreliable for template repos
-      await octokit.rest.repos.getContent({ owner, repo, path: "package.json" });
-      console.log(`[github] Repo ${owner}/${repo} ready after ${attempt} attempts (${((Date.now() - start) / 1000).toFixed(1)}s)`);
-      return;
-    } catch {
-      // File not there yet — template still copying
-    }
-    await new Promise((r) => setTimeout(r, 3000));
-  }
+      // Check if file already exists to get its SHA
+      let sha: string | undefined;
+      try {
+        const { data } = await octokit.rest.repos.getContent({
+          owner,
+          repo,
+          path,
+        });
+        if (!Array.isArray(data) && data.type === "file") {
+          sha = data.sha;
+        }
+      } catch {
+        // File doesn't exist yet — that's fine
+      }
 
-  throw new Error(`Repo ${owner}/${repo} not ready after ${maxWaitMs / 1000}s`);
+      await octokit.rest.repos.createOrUpdateFileContents({
+        owner,
+        repo,
+        path,
+        message,
+        content: Buffer.from(content).toString("base64"),
+        sha,
+      });
+
+      if (attempt > 1) {
+        console.log(`[github] pushFileToRepo succeeded on attempt ${attempt}`);
+      }
+      return;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Repo not ready yet (no branch, empty, etc.) — retry
+      if (attempt < maxRetries) {
+        console.log(`[github] pushFileToRepo attempt ${attempt} failed: ${msg} — retrying in ${retryDelayMs / 1000}s`);
+        await new Promise((r) => setTimeout(r, retryDelayMs));
+      } else {
+        throw new Error(`pushFileToRepo failed after ${maxRetries} attempts: ${msg}`);
+      }
+    }
+  }
 }
 
 export async function deleteGitHubRepo(

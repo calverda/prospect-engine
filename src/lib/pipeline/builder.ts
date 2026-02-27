@@ -2,7 +2,6 @@ import type { BuildResult } from "./types";
 import {
   createRepoFromTemplate,
   pushFileToRepo,
-  waitForRepo,
 } from "@/lib/utils/github";
 import {
   createVercelProject,
@@ -29,11 +28,7 @@ export async function buildSite(
   const { repoUrl, owner } = await createRepoFromTemplate(repoName);
   console.log(`[builder] Repo created: ${repoUrl}`);
 
-  // Step 2: Wait for template content to be copied
-  console.log("[builder] Waiting for template content...");
-  await waitForRepo(owner, repoName);
-
-  // Step 3: Push content.json with prospect's site plan data
+  // Step 2: Push content.json — retries internally until template repo is ready
   console.log("[builder] Pushing content.json...");
   await pushFileToRepo(
     owner,
