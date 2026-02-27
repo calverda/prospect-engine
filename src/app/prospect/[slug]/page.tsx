@@ -100,9 +100,15 @@ export default function ProspectDetail() {
     return () => clearInterval(interval);
   }, [prospect, fetchProspect]);
 
+  const clearErrors = () => {
+    setPlanError(null);
+    setBuildError(null);
+  };
+
   const handleGenerate = async () => {
     if (!prospect) return;
     setGenerating(true);
+    clearErrors();
     try {
       const res = await fetch(`/api/prospects/${prospect.id}`, { method: "POST" });
       if (!res.ok) throw new Error("Failed to start generation");
@@ -116,6 +122,7 @@ export default function ProspectDetail() {
   const handleCancel = async () => {
     if (!prospect) return;
     setCancelling(true);
+    clearErrors();
     try {
       const res = await fetch(`/api/prospects/${prospect.id}/cancel`, { method: "POST" });
       if (!res.ok) throw new Error("Failed to cancel");
@@ -130,6 +137,7 @@ export default function ProspectDetail() {
   const handleRegenerate = async () => {
     if (!prospect) return;
     setRegenerating(true);
+    clearErrors();
     try {
       const res = await fetch(`/api/prospects/${prospect.id}/regenerate`, { method: "POST" });
       if (!res.ok) {
@@ -146,7 +154,7 @@ export default function ProspectDetail() {
   const handlePlanWebsite = async () => {
     if (!prospect) return;
     setPlanning(true);
-    setPlanError(null);
+    clearErrors();
 
     try {
       const res = await fetch(`/api/prospects/${prospect.id}/plan-site`, {
@@ -170,7 +178,7 @@ export default function ProspectDetail() {
   const handleBuildDeploy = async () => {
     if (!prospect) return;
     setBuilding(true);
-    setBuildError(null);
+    clearErrors();
 
     try {
       const res = await fetch(`/api/prospects/${prospect.id}/build`, {
