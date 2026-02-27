@@ -9,6 +9,8 @@ const MAX_PAGES = 20;
 const MAX_DEPTH = 2;
 const CRAWL_TIMEOUT_MS = 30_000;
 const PAGE_TIMEOUT_MS = 8_000;
+const JINA_TIMEOUT_MS = 15_000;
+const THIN_CONTENT_THRESHOLD = 500; // chars — below this we suspect JS rendering
 const USER_AGENT =
   "Mozilla/5.0 (compatible; CalverdaBot/1.0; +https://calverda.com)";
 
@@ -53,9 +55,50 @@ export async function crawlWebsite(url: string): Promise<CrawledSite> {
     }
   }
 
-  // If we got zero pages, return a minimal result
+  // If we got zero pages, try JS-rendering fallback before giving up
   if (pages.length === 0) {
-    return emptyResult(baseUrl);
+    const jsPage = await fetchWithJsRendering(baseUrl);
+    if (jsPage) {
+      console.log(`[crawler] Static fetch returned 0 pages, JS rendering recovered content (${jsPage.bodyText.length} chars)`);
+      pages.push(jsPage);
+    } else {
+      return emptyResult(baseUrl);
+    }
+  }
+
+  // Check if content is thin — likely a JS-rendered site
+  const totalBodyText = pages.reduce((sum, p) => sum + p.bodyText.length, 0);
+  if (totalBodyText < THIN_CONTENT_THRESHOLD && pages.length > 0) {
+    console.log(`[crawler] Thin content detected (${totalBodyText} chars across ${pages.length} pages) — trying JS rendering fallback...`);
+    const jsPage = await fetchWithJsRendering(baseUrl);
+    if (jsPage && jsPage.bodyText.length > totalBodyText) {
+      console.log(`[crawler] JS rendering recovered ${jsPage.bodyText.length} chars (was ${totalBodyText})`);
+      // Replace the thin homepage with the JS-rendered version
+      pages[0] = jsPage;
+
+      // Also try to re-fetch a few key internal pages via JS rendering
+      const internalUrls = jsPage.internalLinks
+        .filter((link) => {
+          const path = new URL(link, origin).pathname.toLowerCase();
+          return /service|about|contact/i.test(path);
+        })
+        .slice(0, 4);
+
+      const jsSubPages = await Promise.allSettled(
+        internalUrls.map((url) => fetchWithJsRendering(url))
+      );
+      for (const result of jsSubPages) {
+        if (result.status === "fulfilled" && result.value && result.value.bodyText.length > 100) {
+          // Replace or add the page
+          const existingIdx = pages.findIndex((p) => canonicalize(p.url) === canonicalize(result.value!.url));
+          if (existingIdx >= 0) {
+            pages[existingIdx] = result.value;
+          } else {
+            pages.push(result.value);
+          }
+        }
+      }
+    }
   }
 
   const homepage = pages[0];
@@ -137,6 +180,102 @@ async function fetchHtml(url: string): Promise<FetchResult> {
 async function fetchAndParsePage(url: string): Promise<CrawledPage> {
   const { html } = await fetchHtml(url);
   return parsePage(url, html);
+}
+
+// ── JS rendering fallback (Jina Reader API) ──
+
+async function fetchWithJsRendering(url: string): Promise<CrawledPage | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), JINA_TIMEOUT_MS);
+
+    const jinaUrl = `https://r.jina.ai/${url}`;
+    console.log(`[crawler] Fetching via Jina Reader: ${url}`);
+
+    const res = await fetch(jinaUrl, {
+      headers: {
+        Accept: "text/markdown",
+        "X-Return-Format": "markdown",
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      console.warn(`[crawler] Jina Reader returned ${res.status} for ${url}`);
+      return null;
+    }
+
+    const markdown = await res.text();
+    if (!markdown || markdown.length < 50) {
+      console.warn(`[crawler] Jina Reader returned minimal content for ${url}`);
+      return null;
+    }
+
+    // Parse the markdown into a CrawledPage
+    return parseJinaMarkdown(url, markdown);
+  } catch (err) {
+    console.warn(`[crawler] Jina Reader failed for ${url}: ${err}`);
+    return null;
+  }
+}
+
+function parseJinaMarkdown(url: string, markdown: string): CrawledPage {
+  // Extract title from first heading
+  const titleMatch = markdown.match(/^#\s+(.+)$/m);
+  const title = titleMatch ? titleMatch[1].trim() : "";
+
+  // Extract all headings
+  const headings: string[] = [];
+  const headingRegex = /^#{1,4}\s+(.+)$/gm;
+  let match;
+  while ((match = headingRegex.exec(markdown)) !== null) {
+    const text = match[1].trim();
+    if (text && text.length < 150) headings.push(text);
+  }
+
+  // Strip markdown formatting for body text
+  const bodyText = markdown
+    .replace(/^#{1,6}\s+/gm, "") // Remove heading markers
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // [text](url) → text
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "") // Remove images
+    .replace(/[*_]{1,3}([^*_]+)[*_]{1,3}/g, "$1") // bold/italic → plain
+    .replace(/`[^`]+`/g, "") // Remove inline code
+    .replace(/```[\s\S]*?```/g, "") // Remove code blocks
+    .replace(/^\s*[-*+]\s+/gm, "") // Remove list markers
+    .replace(/^\s*\d+\.\s+/gm, "") // Remove numbered list markers
+    .replace(/\n{3,}/g, "\n\n") // Collapse multiple newlines
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const wordCount = bodyText.split(/\s+/).filter(Boolean).length;
+
+  // Extract links
+  const origin = new URL(url).origin;
+  const internalLinks: string[] = [];
+  const externalLinks: string[] = [];
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  while ((match = linkRegex.exec(markdown)) !== null) {
+    const href = match[2];
+    const resolved = resolveUrl(href, origin);
+    if (!resolved) continue;
+    if (resolved.startsWith(origin)) {
+      internalLinks.push(resolved);
+    } else {
+      externalLinks.push(resolved);
+    }
+  }
+
+  return {
+    url,
+    title,
+    headings,
+    bodyText: bodyText.slice(0, 10_000),
+    wordCount,
+    internalLinks: [...new Set(internalLinks)],
+    externalLinks: [...new Set(externalLinks)],
+  };
 }
 
 // ── Page parsing ──
