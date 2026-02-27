@@ -61,7 +61,7 @@ ${JSON.stringify(analysis, null, 2)}
 
   // ── GBP data ──
   if (gbp) {
-    prompt += `## GOOGLE BUSINESS PROFILE\n`;
+    prompt += `## GOOGLE BUSINESS PROFILE (VERIFIED DATA)\n`;
     prompt += `Name: ${gbp.name}\n`;
     prompt += `Rating: ${gbp.rating} (${gbp.reviewCount} reviews)\n`;
     prompt += `Phone: ${gbp.phone}\n`;
@@ -78,6 +78,8 @@ ${JSON.stringify(analysis, null, 2)}
         .join("\n");
       prompt += "\n\n";
     }
+  } else {
+    prompt += `## GOOGLE BUSINESS PROFILE\nNot found. This business does NOT have a verified GBP listing. Do NOT reference any Google rating, review count, or reviews. Leave testimonials empty if no reviews were found on the website either.\n\n`;
   }
 
   // ── Audit data ──
@@ -115,7 +117,8 @@ directly by a Next.js template — every field matters.
 
 CRITICAL RULES:
 - Use REAL data from the business (real phone, real address, real services, real reviews)
-- Every piece of copy must be specific to THIS business — no generic filler
+- Do NOT invent specific facts (years in business, team size, number of projects, certifications) unless they appear in the scraped data
+- If no GBP was found, do NOT include any Google rating stats, review counts, or testimonials unless they came from the website itself
 - Identify redundant/duplicate pages from their current site and consolidate them
 - Rewrite weak copy for conversion — short punchy headlines, clear value props, strong CTAs
 - Every service gets its own dedicated page with unique, substantial content
@@ -247,9 +250,10 @@ Return ONLY valid JSON matching this exact structure:
 IMPORTANT NOTES:
 - Generate 4-8 service pages based on their actual services. Each service page needs substantial unique content (not copy-paste).
 - The "improvements" array should have 5-10 specific, actionable items that reference actual problems you found on their current site.
-- Stats in hero should use real numbers (real rating, real review count, real years in business) — estimate conservatively if not explicitly stated.
-- trustBar items should reflect what they actually offer (don't say "24/7 Emergency" if they're not that type of business).
-- Use the towns from the existing analysis serviceArea data.
+- Stats in hero MUST use real numbers only. If no GBP rating exists, omit the rating stat. If years in business is unknown, omit that stat. Do NOT make up numbers. Only include stats you can verify from the data.
+- trustBar items should reflect what they actually offer (don't say "24/7 Emergency" if they're not that type of business). If no GBP was found, do NOT say "5-Star Rated".
+- For the "towns" array in serviceArea: ONLY list towns explicitly mentioned on their website or GBP. If none were found, use just the city from their address.
+- Testimonials: ONLY use real reviews from GBP data or testimonials found on their website. If neither exists, use an empty array — do NOT invent testimonials.
 - Return ONLY valid JSON. No markdown, no explanation, no code fences.`;
 
   return prompt;

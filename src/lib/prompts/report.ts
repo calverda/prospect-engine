@@ -15,9 +15,15 @@ export function buildIntelPrompt(
 
   // ── Prospect data ──
   prompt += `## THE PROSPECT\n`;
-  prompt += `Name: ${gbp?.name ?? "Unknown"}\n`;
-  prompt += `Rating: ${gbp?.rating ?? "N/A"} (${gbp?.reviewCount ?? 0} reviews)\n`;
-  prompt += `GBP Completeness: ${gbp?.completenessScore ?? "N/A"}/100\n`;
+  if (gbp) {
+    prompt += `Google Business Profile: FOUND\n`;
+    prompt += `Name: ${gbp.name}\n`;
+    prompt += `Rating: ${gbp.rating} (${gbp.reviewCount} reviews)\n`;
+    prompt += `GBP Completeness: ${gbp.completenessScore}/100\n`;
+  } else {
+    prompt += `Google Business Profile: NOT FOUND — this business does NOT have a verified GBP listing.\n`;
+    prompt += `⚠️ Do NOT reference any GBP rating, review count, or profile completeness for the prospect. State clearly that they lack a GBP listing and explain why that is a problem.\n`;
+  }
   prompt += `Est. monthly traffic: ${traffic?.estimatedMonthlyTraffic ?? "Unknown"}\n`;
   prompt += `Indexed pages: ${traffic?.indexedPages ?? "Unknown"}\n`;
 
@@ -65,8 +71,10 @@ export function buildIntelPrompt(
 
 CRITICAL RULES:
 - Do NOT estimate revenue, dollar amounts, or financial projections. These cannot be verified and undermine credibility.
+- Do NOT invent data that is not in the scraped information above. If the prospect has no GBP, say so — do not fabricate ratings or review counts.
+- Do NOT reference trends over time (e.g. "gained X reviews in the last year") — we only have current snapshot data, not historical data.
 - Focus ONLY on observable, verifiable competitive differences using the data provided above.
-- Every claim must be backed by specific numbers from the scraped data.
+- Every claim must be backed by specific numbers from the scraped data. If a data point is missing, say "data not available" rather than guessing.
 - Be direct and specific about what competitors are doing better and exactly what needs to change.
 - Position Calverda as a web design and digital marketing agency that specializes in local service businesses.
 
@@ -96,10 +104,10 @@ Generate this JSON report:
       "howCalverdaHelps": "How Calverda specifically addresses this — be concrete about what they deliver. For example: 'Calverda builds conversion-optimized websites with built-in local SEO, schema markup, and mobile-first performance — designed specifically for ${industry.name.toLowerCase()} businesses to rank in the map pack and turn visitors into calls.'"
     }
   ],
-  "urgencyNote": "1 sentence about why acting now matters — reference a specific competitive trend from the data (e.g. 'Your top competitor gained X reviews in the last year while your profile has remained stagnant — the gap widens every month you wait.')"
+  "urgencyNote": "1 sentence about why acting now matters — reference the current competitive gap from the data (e.g. 'Your top competitor has X reviews while you have Y — every month without action lets that gap widen.'). Do NOT reference historical trends or claim competitors 'gained' reviews over time — we only have current data."
 }
 
-Generate 4-6 competitive gaps. Only include categories where you have real, verifiable data to compare. Common categories:
+Generate 4-6 competitive gaps. ONLY include categories where you have real, verifiable data for BOTH the prospect and competitors. If the prospect has no GBP, the "yours" field for Reviews & Reputation should say "No Google Business Profile found" — do NOT invent review counts. Common categories:
 - Reviews & Reputation (review count, rating)
 - Website Content (word count, number of service pages, blog)
 - Technical SEO (schema markup, performance score, mobile readiness, HTTPS)

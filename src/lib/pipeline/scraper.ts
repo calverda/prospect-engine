@@ -47,11 +47,11 @@ function isNameMatch(searchName: string, resultName: string): boolean {
   if (searchCore === resultCore) return true;
 
   // One core contains the other, but only if the shorter one is a substantial
-  // portion of the longer one (prevents "alma" matching "alma house cleaning")
+  // portion of the longer one (prevents "phoenix hvac" matching "phoenix air")
   if (searchCore && resultCore) {
     const shorter = searchCore.length <= resultCore.length ? searchCore : resultCore;
     const longer = searchCore.length <= resultCore.length ? resultCore : searchCore;
-    if (longer.includes(shorter) && shorter.length >= longer.length * 0.5) return true;
+    if (longer.includes(shorter) && shorter.length >= longer.length * 0.7) return true;
   }
 
   // Check word overlap — all meaningful search words must appear in result,

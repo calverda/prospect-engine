@@ -8,8 +8,26 @@ export function buildAnalysisPrompt(
   const site = scraped.crawledSite;
   const gbp = scraped.gbp;
 
-  let prompt = `I've crawled a ${industry.name} business's website and Google Business Profile.
-Analyze everything and generate the complete content for a new, high-converting website.\n\n`;
+  // ── Measure data quality ──
+  const totalBodyText = site
+    ? site.pages.reduce((sum, p) => sum + p.bodyText.length, 0)
+    : 0;
+  const hasSubstantialContent = totalBodyText > 500;
+  const hasServices = site ? site.services.length > 0 : false;
+  const hasGBP = !!gbp;
+
+  let prompt = `I've scraped data from a ${industry.name} business. Generate content for a new, high-converting website based ONLY on verifiable information.\n\n`;
+
+  // ── Data quality warning ──
+  prompt += `## DATA QUALITY ASSESSMENT\n`;
+  prompt += `Website content scraped: ${hasSubstantialContent ? "YES — use it" : "MINIMAL or NONE — the site may use JavaScript rendering that our crawler cannot process"}\n`;
+  prompt += `Total text extracted: ${totalBodyText} characters\n`;
+  prompt += `Services found on site: ${hasServices ? `YES (${site!.services.length})` : "NONE"}\n`;
+  prompt += `Google Business Profile found: ${hasGBP ? "YES" : "NO — this business does NOT have a verified GBP listing"}\n\n`;
+
+  if (!hasSubstantialContent) {
+    prompt += `⚠️ IMPORTANT: Very little content was extracted from the website. This likely means the site uses JavaScript rendering (React, Wix, Squarespace, etc.) that our crawler cannot process. DO NOT invent or guess content that isn't in the data below. Use only what is explicitly provided. For anything you cannot verify, use generic but honest industry copy and mark it as industry-standard rather than business-specific.\n\n`;
+  }
 
   // ── Website content ──
   if (site) {
@@ -61,7 +79,7 @@ Analyze everything and generate the complete content for a new, high-converting 
 
   // ── GBP data ──
   if (gbp) {
-    prompt += `## THEIR GOOGLE BUSINESS PROFILE\n`;
+    prompt += `## THEIR GOOGLE BUSINESS PROFILE (VERIFIED — this data is real)\n`;
     prompt += `Name: ${gbp.name}\n`;
     prompt += `Rating: ${gbp.rating} (${gbp.reviewCount} reviews)\n`;
     prompt += `Phone: ${gbp.phone}\n`;
@@ -82,6 +100,8 @@ Analyze everything and generate the complete content for a new, high-converting 
         .join("\n");
       prompt += "\n\n";
     }
+  } else {
+    prompt += `## GOOGLE BUSINESS PROFILE\nNot found. This business does NOT have a verified Google Business Profile. Do NOT reference any GBP rating, reviews, or review count in the generated content.\n\n`;
   }
 
   // ── Industry defaults as fallback context ──
@@ -95,7 +115,7 @@ Analyze everything and generate the complete content for a new, high-converting 
   // ── Output format ──
   prompt += `---
 
-Based on ALL of this data, generate the following JSON object. Be specific to THIS business — use their actual services, their actual location, their actual differentiators. Don't be generic. The copy should feel like it was written by someone who deeply understands their business.
+Based on the data above, generate the following JSON object. Use ONLY facts that appear in the scraped data. If the data is thin (see the DATA QUALITY ASSESSMENT above), write professional industry-appropriate copy but do NOT invent specific claims about the business (like years in business, number of projects, team size, or specific certifications) unless that information appears in the data above.
 
 {
   "businessSummary": "2-3 sentence summary of what this business does and who they serve",
@@ -130,7 +150,7 @@ Based on ALL of this data, generate the following JSON object. Be specific to TH
     "serviceArea": {
       "headline": "section headline with area name",
       "description": "paragraph about their coverage area",
-      "towns": ["list of 8-12 towns they likely serve based on their address"]
+      "towns": ["ONLY include towns explicitly mentioned on their website or GBP. If none found, return a single-item array with just the city from their address."]
     },
     "cta": {
       "headline": "compelling closing headline",
@@ -158,9 +178,12 @@ Based on ALL of this data, generate the following JSON object. Be specific to TH
 }
 
 Important:
-- Generate 4-8 services based on what you found on their site/GBP. Fall back to industry defaults if sparse.
+- Generate 4-8 services based on what you found on their site/GBP. If the website content is thin or empty, use standard ${industry.name.toLowerCase()} services but do NOT claim these are services the business specifically offers — frame them generically.
 - Generate exactly 4 whyChooseUs items.
-- Every piece of copy should reference their specific business, location, and services — NOT generic placeholder text.
+- If GBP data was NOT found, do NOT mention reviews, ratings, or "five-star" anything in the copy.
+- Do NOT invent business history, founding year, team size, years of experience, or any specific claims unless they appear in the scraped data.
+- The "towns" array must ONLY contain towns explicitly found in the scraped content. If none were found, use just the provided location city.
+- The "differentiators" must come from the actual scraped content. If content is thin, use honest industry-appropriate differentiators like "Serving [location]" rather than fabricated specifics.
 - Return ONLY valid JSON. No markdown, no explanation.`;
 
   return prompt;
