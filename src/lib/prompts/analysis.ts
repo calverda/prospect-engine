@@ -16,17 +16,17 @@ export function buildAnalysisPrompt(
   const hasServices = site ? site.services.length > 0 : false;
   const hasGBP = !!gbp;
 
-  let prompt = `I've scraped data from a ${industry.name} business. Generate content for a new, high-converting website based ONLY on verifiable information.\n\n`;
+  let prompt = `I've scraped data from a ${industry.name} business. Generate the complete content for a new, high-converting website. Use real data where available and build out with strong industry-appropriate content where data is thin.\n\n`;
 
   // ── Data quality warning ──
   prompt += `## DATA QUALITY ASSESSMENT\n`;
-  prompt += `Website content scraped: ${hasSubstantialContent ? "YES — use it" : "MINIMAL or NONE — the site may use JavaScript rendering that our crawler cannot process"}\n`;
+  prompt += `Website content scraped: ${hasSubstantialContent ? "YES — use it as the primary source" : "MINIMAL or NONE — build from industry expertise + whatever data exists"}\n`;
   prompt += `Total text extracted: ${totalBodyText} characters\n`;
-  prompt += `Services found on site: ${hasServices ? `YES (${site!.services.length})` : "NONE"}\n`;
-  prompt += `Google Business Profile found: ${hasGBP ? "YES" : "NO — this business does NOT have a verified GBP listing"}\n\n`;
+  prompt += `Services found on site: ${hasServices ? `YES (${site!.services.length})` : "NONE — use industry defaults for this type of business"}\n`;
+  prompt += `Google Business Profile found: ${hasGBP ? "YES — use real rating and reviews" : "NO — do not reference any Google rating or review count"}\n\n`;
 
   if (!hasSubstantialContent) {
-    prompt += `⚠️ IMPORTANT: Very little content was extracted from the website. This likely means the site uses JavaScript rendering (React, Wix, Squarespace, etc.) that our crawler cannot process. DO NOT invent or guess content that isn't in the data below. Use only what is explicitly provided. For anything you cannot verify, use generic but honest industry copy and mark it as industry-standard rather than business-specific.\n\n`;
+    prompt += `NOTE: Limited content was extracted from their website. Your job is to build them a BETTER site than what they have. Use the industry defaults below to create a full, compelling service offering. Use their real contact info and location. Write professional copy that positions them well in their market. Just don't invent specific factual claims about the business itself (years in business, team size, certifications, awards) unless that info appears in the data.\n\n`;
   }
 
   // ── Website content ──
@@ -101,7 +101,7 @@ export function buildAnalysisPrompt(
       prompt += "\n\n";
     }
   } else {
-    prompt += `## GOOGLE BUSINESS PROFILE\nNot found. This business does NOT have a verified Google Business Profile. Do NOT reference any GBP rating, reviews, or review count in the generated content.\n\n`;
+    prompt += `## GOOGLE BUSINESS PROFILE\nNot found. Do NOT reference a Google rating, star count, or review count in generated copy. You can still write compelling trust-building content using other approaches (service guarantees, licensing, experience, etc.).\n\n`;
   }
 
   // ── Industry defaults as fallback context ──
@@ -115,7 +115,7 @@ export function buildAnalysisPrompt(
   // ── Output format ──
   prompt += `---
 
-Based on the data above, generate the following JSON object. Use ONLY facts that appear in the scraped data. If the data is thin (see the DATA QUALITY ASSESSMENT above), write professional industry-appropriate copy but do NOT invent specific claims about the business (like years in business, number of projects, team size, or specific certifications) unless that information appears in the data above.
+Based on the data above, generate the following JSON object. Your goal is to create a site that is dramatically better than their current one — a site that shows them what's possible. Use real business data (name, phone, address, services) where available. For thin data, build out compelling content using industry expertise. The only things you must NOT fabricate are specific factual claims about THIS business (years in business, team size, certifications, awards, specific project counts) unless they appear in the scraped data.
 
 {
   "businessSummary": "2-3 sentence summary of what this business does and who they serve",
@@ -178,12 +178,12 @@ Based on the data above, generate the following JSON object. Use ONLY facts that
 }
 
 Important:
-- Generate 4-8 services based on what you found on their site/GBP. If the website content is thin or empty, use standard ${industry.name.toLowerCase()} services but do NOT claim these are services the business specifically offers — frame them generically.
-- Generate exactly 4 whyChooseUs items.
-- If GBP data was NOT found, do NOT mention reviews, ratings, or "five-star" anything in the copy.
-- Do NOT invent business history, founding year, team size, years of experience, or any specific claims unless they appear in the scraped data.
-- The "towns" array must ONLY contain towns explicitly found in the scraped content. If none were found, use just the provided location city.
-- The "differentiators" must come from the actual scraped content. If content is thin, use honest industry-appropriate differentiators like "Serving [location]" rather than fabricated specifics.
+- Generate 4-8 services. Use services found on their site/GBP first. If thin, build out a full service offering using industry defaults — present them as services this type of business typically offers.
+- Generate exactly 4 whyChooseUs items — use industry-appropriate benefits (e.g. "Licensed & Insured", "Free Estimates", "Satisfaction Guaranteed").
+- If GBP data was NOT found, do NOT mention a Google rating, star rating, or review count. You CAN still write trust-building copy without referencing reviews.
+- Do NOT invent specific factual claims: no fake founding year, team size, project count, or certifications unless in the data.
+- The "towns" array: use towns from the scraped data. If none found, include the provided location city plus 4-6 nearby towns that a ${industry.name.toLowerCase()} business in that area would realistically serve.
+- Write copy that sells — this site needs to be so much better than their current one that they want to buy it.
 - Return ONLY valid JSON. No markdown, no explanation.`;
 
   return prompt;

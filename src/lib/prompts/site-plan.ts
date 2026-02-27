@@ -79,7 +79,7 @@ ${JSON.stringify(analysis, null, 2)}
       prompt += "\n\n";
     }
   } else {
-    prompt += `## GOOGLE BUSINESS PROFILE\nNot found. This business does NOT have a verified GBP listing. Do NOT reference any Google rating, review count, or reviews. Leave testimonials empty if no reviews were found on the website either.\n\n`;
+    prompt += `## GOOGLE BUSINESS PROFILE\nNot found. Do NOT reference a Google rating or review count. Leave testimonials as an empty array if no reviews were found on the website either. You can still build compelling trust signals using other approaches.\n\n`;
   }
 
   // ── Audit data ──
@@ -116,10 +116,10 @@ Generate the complete content.json for an improved multi-page website. This JSON
 directly by a Next.js template — every field matters.
 
 CRITICAL RULES:
-- Use REAL data from the business (real phone, real address, real services, real reviews)
-- Do NOT invent specific facts (years in business, team size, number of projects, certifications) unless they appear in the scraped data
-- If no GBP was found, do NOT include any Google rating stats, review counts, or testimonials unless they came from the website itself
-- Identify redundant/duplicate pages from their current site and consolidate them
+- Use REAL business data where available (real phone, real address, real services, real reviews)
+- For thin websites, build out a full, impressive site using industry expertise — this is the whole point: show them what their site SHOULD look like
+- Do NOT invent specific factual claims about THIS business (fake founding year, fake team size, fake certifications, fake award names) unless they appear in the scraped data
+- If no GBP was found, do NOT reference Google ratings/reviews — but DO build trust through other copy (guarantees, licensing, professionalism)
 - Rewrite weak copy for conversion — short punchy headlines, clear value props, strong CTAs
 - Every service gets its own dedicated page with unique, substantial content
 - All phone CTAs must use their actual phone number
@@ -250,10 +250,10 @@ Return ONLY valid JSON matching this exact structure:
 IMPORTANT NOTES:
 - Generate 4-8 service pages based on their actual services. Each service page needs substantial unique content (not copy-paste).
 - The "improvements" array should have 5-10 specific, actionable items that reference actual problems you found on their current site.
-- Stats in hero MUST use real numbers only. If no GBP rating exists, omit the rating stat. If years in business is unknown, omit that stat. Do NOT make up numbers. Only include stats you can verify from the data.
-- trustBar items should reflect what they actually offer (don't say "24/7 Emergency" if they're not that type of business). If no GBP was found, do NOT say "5-Star Rated".
-- For the "towns" array in serviceArea: ONLY list towns explicitly mentioned on their website or GBP. If none were found, use just the city from their address.
-- Testimonials: ONLY use real reviews from GBP data or testimonials found on their website. If neither exists, use an empty array — do NOT invent testimonials.
+- Stats in hero: use real numbers where available (real GBP rating, real review count). If a stat can't be verified, omit that specific stat — but still include 2-3 stats. You can use general industry-appropriate stats like "Residential & Commercial" or "Licensed & Insured" as alternatives.
+- trustBar items should be appropriate for this type of business. If no GBP was found, don't say "5-Star Rated" — use alternatives like "Licensed & Insured", "Free Estimates", "Satisfaction Guaranteed".
+- For the "towns" array in serviceArea: use towns from the scraped data. If none found, include the city from their address plus 4-6 nearby towns that a local service business in that area would realistically serve.
+- Testimonials: use real reviews from GBP or website. If none exist, use an empty array — do NOT invent fake testimonials.
 - Return ONLY valid JSON. No markdown, no explanation, no code fences.`;
 
   return prompt;

@@ -21,8 +21,8 @@ export function buildIntelPrompt(
     prompt += `Rating: ${gbp.rating} (${gbp.reviewCount} reviews)\n`;
     prompt += `GBP Completeness: ${gbp.completenessScore}/100\n`;
   } else {
-    prompt += `Google Business Profile: NOT FOUND — this business does NOT have a verified GBP listing.\n`;
-    prompt += `⚠️ Do NOT reference any GBP rating, review count, or profile completeness for the prospect. State clearly that they lack a GBP listing and explain why that is a problem.\n`;
+    prompt += `Google Business Profile: NOT FOUND — this business does not have a verified GBP listing.\n`;
+    prompt += `This is a major competitive gap. Frame the missing GBP as a critical finding and opportunity — explain what they're losing by not having one. Do NOT fabricate a rating or review count for them.\n`;
   }
   prompt += `Est. monthly traffic: ${traffic?.estimatedMonthlyTraffic ?? "Unknown"}\n`;
   prompt += `Indexed pages: ${traffic?.indexedPages ?? "Unknown"}\n`;
