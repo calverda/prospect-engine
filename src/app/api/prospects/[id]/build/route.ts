@@ -47,6 +47,7 @@ export async function POST(
     await updateProspect(id, {
       status: "building",
       statusMessage: "Creating GitHub repo from template...",
+      errorMessage: null,
     });
 
     const buildResult = await buildSite(prospect.sitePlan, prospect.slug);

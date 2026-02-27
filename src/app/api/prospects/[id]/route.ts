@@ -63,7 +63,7 @@ export async function POST(
 
   await db
     .update(prospects)
-    .set({ status: "pending" })
+    .set({ status: "pending", errorMessage: null })
     .where(eq(prospects.id, id));
 
   const input: ProspectInput = {
