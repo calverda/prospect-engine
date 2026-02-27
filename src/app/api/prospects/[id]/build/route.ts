@@ -4,6 +4,9 @@ import { prospects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { buildSite } from "@/lib/pipeline/builder";
 
+// Build needs time: GitHub template creation + Vercel deploy
+export const maxDuration = 300;
+
 async function updateProspect(id: string, data: Record<string, unknown>) {
   await db.update(prospects).set(data).where(eq(prospects.id, id));
 }
@@ -40,53 +43,42 @@ export async function POST(
     );
   }
 
-  // Fire-and-forget: update status and run build async
-  await updateProspect(id, {
-    status: "building",
-    statusMessage: "Creating GitHub repo from template...",
-  });
-
-  // Run build in background — status updates via DB polling
-  runBuild(id, prospect.slug, prospect.sitePlan).catch((err) => {
-    console.error(`[build] Failed for ${prospect.slug}:`, err);
-  });
-
-  return NextResponse.json({ status: "building", slug: prospect.slug });
-}
-
-async function runBuild(id: string, slug: string, sitePlan: string) {
   try {
     await updateProspect(id, {
       status: "building",
-      statusMessage: "Building preview site...",
+      statusMessage: "Creating GitHub repo from template...",
     });
 
-    const result = await buildSite(sitePlan, slug);
+    const buildResult = await buildSite(prospect.sitePlan, prospect.slug);
 
     await updateProspect(id, {
       status: "deploying",
       statusMessage: "Deploying to Vercel...",
     });
 
-    // Short delay to let the status message show
-    await new Promise((r) => setTimeout(r, 1000));
-
     await updateProspect(id, {
       status: "complete",
       statusMessage: "Site built and deployed",
-      previewUrl: result.previewUrl,
-      repoUrl: result.repoUrl,
+      previewUrl: buildResult.previewUrl,
+      repoUrl: buildResult.repoUrl,
     });
 
-    console.log(`[build] Complete for ${slug}: ${result.previewUrl}`);
+    console.log(`[build] Complete for ${prospect.slug}: ${buildResult.previewUrl}`);
+    return NextResponse.json({
+      status: "complete",
+      previewUrl: buildResult.previewUrl,
+      repoUrl: buildResult.repoUrl,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[build] Error for ${slug}: ${message}`);
+    console.error(`[build] Error for ${prospect.slug}: ${message}`);
 
     await updateProspect(id, {
       status: "error",
       statusMessage: "Build failed",
       errorMessage: message,
     });
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

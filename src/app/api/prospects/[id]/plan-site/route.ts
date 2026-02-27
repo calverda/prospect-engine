@@ -5,6 +5,9 @@ import { eq } from "drizzle-orm";
 import { generateSitePlan, resetUsageAccumulator, getAccumulatedUsage } from "@/lib/pipeline/analyzer";
 import type { ScrapedData, BusinessAnalysis } from "@/lib/pipeline/types";
 
+// Site plan generation involves Claude API calls
+export const maxDuration = 300;
+
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

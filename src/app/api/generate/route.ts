@@ -7,6 +7,9 @@ import { slugify } from "@/lib/utils/format";
 import { runPipeline } from "@/lib/pipeline";
 import type { ProspectInput } from "@/lib/pipeline/types";
 
+// Pipeline needs time: scraping + Claude API calls
+export const maxDuration = 300;
+
 export async function POST(request: NextRequest) {
   const body = (await request.json()) as ProspectInput & { generateNow?: boolean };
 
@@ -43,10 +46,12 @@ export async function POST(request: NextRequest) {
   });
 
   if (generateNow) {
-    // Fire-and-forget — pipeline updates DB status as it progresses
-    runPipeline(body, id).catch((err) => {
+    try {
+      await runPipeline(body, id);
+    } catch (err) {
       console.error(`[api/generate] Pipeline failed for ${slug}:`, err);
-    });
+      // Pipeline already sets status to "error" in its catch block
+    }
   }
 
   return NextResponse.json({ id, slug, status });

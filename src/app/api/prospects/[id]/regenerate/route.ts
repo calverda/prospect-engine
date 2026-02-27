@@ -5,6 +5,9 @@ import { eq } from "drizzle-orm";
 import { analyzeAll, resetUsageAccumulator, getAccumulatedUsage } from "@/lib/pipeline/analyzer";
 import type { ScrapedData, ProspectInput } from "@/lib/pipeline/types";
 
+// Regeneration runs Claude API calls
+export const maxDuration = 300;
+
 async function updateProspect(id: string, data: Record<string, unknown>) {
   await db.update(prospects).set(data).where(eq(prospects.id, id));
 }
@@ -57,18 +60,6 @@ export async function POST(
     apiCost: null,
   });
 
-  // Fire-and-forget: run analysis in background
-  runRegeneration(id, prospect).catch((err) => {
-    console.error(`[regenerate] Failed for ${prospect.slug}:`, err);
-  });
-
-  return NextResponse.json({ status: "analyzing", slug: prospect.slug });
-}
-
-async function runRegeneration(
-  id: string,
-  prospect: { slug: string; crawledSiteData: string | null; gbpData: string | null; competitorData: string | null; auditData: string | null; trafficData: string | null; createdAt: string; businessName: string; websiteUrl: string | null; location: string; industry: string }
-) {
   try {
     // Reconstruct scraped data from stored JSON
     const scraped: ScrapedData = {
@@ -113,6 +104,7 @@ async function runRegeneration(
     });
 
     console.log(`[regenerate] Complete for ${prospect.slug}`);
+    return NextResponse.json({ status: "complete", slug: prospect.slug });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[regenerate] Error for ${prospect.slug}: ${message}`);
@@ -122,5 +114,7 @@ async function runRegeneration(
       statusMessage: "Regeneration failed",
       errorMessage: message,
     });
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

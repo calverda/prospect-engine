@@ -5,6 +5,9 @@ import { eq } from "drizzle-orm";
 import { runPipeline } from "@/lib/pipeline";
 import type { ProspectInput } from "@/lib/pipeline/types";
 
+// Pipeline needs time: scraping + Claude API calls
+export const maxDuration = 300;
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -70,11 +73,16 @@ export async function POST(
     industry: prospect.industry as ProspectInput["industry"],
   };
 
-  runPipeline(input, id).catch((err) => {
+  try {
+    await runPipeline(input, id);
+    return NextResponse.json({ slug: prospect.slug, status: "complete" });
+  } catch (err) {
     console.error(`[api/prospects] Pipeline failed for ${prospect.slug}:`, err);
-  });
-
-  return NextResponse.json({ slug: prospect.slug, status: "pending" });
+    return NextResponse.json(
+      { slug: prospect.slug, status: "error", error: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(
