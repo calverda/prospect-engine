@@ -98,7 +98,7 @@ export async function pushFileToRepo(
 export async function waitForRepo(
   owner: string,
   repo: string,
-  maxWaitMs = 90000
+  maxWaitMs = 120000
 ): Promise<void> {
   const octokit = getOctokit();
   const start = Date.now();
@@ -107,17 +107,14 @@ export async function waitForRepo(
   while (Date.now() - start < maxWaitMs) {
     attempt++;
     try {
-      const { data } = await octokit.rest.repos.get({ owner, repo });
-      // Template repos start empty — wait until they have content
-      if (data.size > 0) {
-        console.log(`[github] Repo ${owner}/${repo} ready after ${attempt} attempts (${((Date.now() - start) / 1000).toFixed(1)}s)`);
-        return;
-      }
+      // Check for actual file content — data.size is unreliable for template repos
+      await octokit.rest.repos.getContent({ owner, repo, path: "package.json" });
+      console.log(`[github] Repo ${owner}/${repo} ready after ${attempt} attempts (${((Date.now() - start) / 1000).toFixed(1)}s)`);
+      return;
     } catch {
-      // Repo not ready yet
+      // File not there yet — template still copying
     }
-    // Poll every 3s, backing off slightly after initial burst
-    await new Promise((r) => setTimeout(r, attempt < 5 ? 2000 : 3000));
+    await new Promise((r) => setTimeout(r, 3000));
   }
 
   throw new Error(`Repo ${owner}/${repo} not ready after ${maxWaitMs / 1000}s`);
